@@ -22,6 +22,7 @@ void motion(int x, int y);
 void Timer(int value);
 void initShader();					                //Function to init Shader
 void initTexture(std::string filename, GLuint & textureID);
+void drawMaze(float x, float y);					//draws translated box
 
 
 
@@ -42,7 +43,7 @@ GLuint ProjectionUniformLocation;	                // Projection Matrix Uniform L
 //Mesh
 Mesh mesh;				                            // Mesh
 
-//map
+//map - can load this from file later
 int map[8][10] = {
 		{0,0,0,0,0,0,0,1,1,1},
 		{2,2,2,2,0,0,0,1,0,0},
@@ -230,19 +231,17 @@ void display(void)
 			false,						//Transpose Matrix
 			ProjectionMatrix.getPtr());	//Pointer to ModelViewMatrixValues
 
-	//Apply Camera Manipluator to Set Model View Matrix on GPU
-	ModelViewMatrix.toIdentity();
-	Matrix4x4 m = cameraManip.apply(ModelViewMatrix);
-	glUniformMatrix4fv(
-			MVMatrixUniformLocation,  	//Uniform location
-			1,					        //Number of Uniforms
-			false,				        //Transpose Matrix
-			m.getPtr());	        //Pointer to Matrix Values
 
+	//use 5.1 to get tank texture/model
 
+	for (int xtran(0); xtran<20;xtran+=2)
+	{
+		for (int ztran(0); ztran<20;ztran+=2)
+		{
+			drawMaze(xtran, ztran);
+		}
 
-	//Call Draw Geometry Function
-	mesh.Draw(vertexPositionAttribute,-1,vertexTexcoordAttribute);  //overwrote previous mesh.draw
+	}
 	//Unuse Shader
 	glUseProgram(0);
     
@@ -317,4 +316,26 @@ void Timer(int value)
 }
 
 
+//function to draw the maze
+
+void drawMaze(float x, float z)
+{
+
+
+	//Apply Camera Manipluator to Set Model View Matrix on GPU
+	ModelViewMatrix.toIdentity();
+	ModelViewMatrix.translate(x, 0.0, z);
+
+	Matrix4x4 m = cameraManip.apply(ModelViewMatrix);
+	glUniformMatrix4fv(
+			MVMatrixUniformLocation,    //Uniform location
+			1,                            //Number of Uniforms
+			false,                        //Transpose Matrix
+			m.getPtr());                //Pointer to Matrix Values
+
+
+
+	//Call Draw Geometry Function
+	mesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
+}
 

@@ -22,7 +22,9 @@ void motion(int x, int y);
 void Timer(int value);
 void initShader();					                //Function to init Shader
 void initTexture(std::string filename, GLuint & textureID);
-void drawMaze(float x, float y);					//draws translated box
+void drawCrate(float x, float y);					//draws translated box
+void drawCoin(float x, float y);					//draws translated coin
+void drawTank();
 
 
 
@@ -31,7 +33,14 @@ GLuint shaderProgramID;			                    // Shader Program ID
 GLuint vertexPositionAttribute;		                // Vertex Position Attribute Location
 GLuint vertexTexcoordAttribute; 					// Vertex Texcoord Attribute Location
 GLuint TextureMapUniformLocation;					// Texture Map Location
-GLuint texture;
+GLuint crateTexture;
+GLuint coinTexture;
+GLuint chassisTexture;
+GLuint front_wheelTexture;
+GLuint back_wheelTexture;
+GLuint turretTexture;
+
+float t_global = 0;
 
 //Viewing
 SphericalCameraManipulator cameraManip;
@@ -41,11 +50,16 @@ Matrix4x4 ProjectionMatrix;		                    // Projection Matrix
 GLuint ProjectionUniformLocation;	                // Projection Matrix Uniform Location
 
 //Mesh
-Mesh mesh;				                            // Mesh
+Mesh crateMesh;
+Mesh coinMesh;
+Mesh chassisMesh;
+Mesh front_wheelMesh;
+Mesh back_wheelMesh;
+Mesh turretMesh;
 
-//map - can load this from file later
+//map - can load this from file later !!top left must be a '1' for start position
 int map[8][10] = {
-		{0,0,0,0,0,0,0,1,1,1},
+		{1,0,0,0,0,0,0,1,1,1},
 		{2,2,2,2,0,0,0,1,0,0},
 		{1,0,0,1,0,0,0,2,0,0},
 		{1,0,0,1,0,0,0,1,0,1},
@@ -81,14 +95,23 @@ int main(int argc, char** argv)
 
 	//Init Mesh Geometry
 	//mesh.initCube();
-	mesh.loadOBJ("../models/cube.obj");
+	crateMesh.loadOBJ("../models/cube.obj");
+	coinMesh.loadOBJ("../models/ball.obj");
+	chassisMesh.loadOBJ("../models/chassis.obj");
+	front_wheelMesh.loadOBJ("../models/front_wheel.obj");
+	back_wheelMesh.loadOBJ("../models/back_wheel.obj");
+	turretMesh.loadOBJ("../models/turret.obj");
+
 
 	//Init Camera Manipultor
 	cameraManip.setPanTiltRadius(0.f,0.f,2.f);
-	cameraManip.setFocus(mesh.getMeshCentroid());
+	cameraManip.setFocus(turretMesh.getMeshCentroid());
 
 	//load texture models
-	initTexture("../models/Crate.bmp", texture);
+	initTexture("../models/Crate.bmp", crateTexture);
+	initTexture("../models/globe.bmp", coinTexture);
+	initTexture("../models/hamvee.bmp", chassisTexture);
+
 
 	//Start main loop
 	glutMainLoop();
@@ -200,10 +223,13 @@ void initTexture(std::string filename, GLuint & textureID)
 
 
 
-//! Display Loop
+//! Display Loop     look at 5.3 for lighting
 void display(void)
 {
-    //Handle keys
+    //increment time
+    t_global += 0.1;
+
+	//Handle keys
     handleKeys();
 
 	//Set Viewport
@@ -216,32 +242,36 @@ void display(void)
 	//Use shader
 	glUseProgram(shaderProgramID);
 
-	//Set Colour after program is in use
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	glUniform1i(TextureMapUniformLocation, 0);
 
-	//Projection Matrix - Perspective Projection
-	ProjectionMatrix.perspective(90, 1.0, 0.0001, 100.0);
-
-	//Set Projection Matrix
-	glUniformMatrix4fv(
-			ProjectionUniformLocation,  //Uniform location
-			1,							//Number of Uniforms
-			false,						//Transpose Matrix
-			ProjectionMatrix.getPtr());	//Pointer to ModelViewMatrixValues
 
 
 	//use 5.1 to get tank texture/model
 
-	for (int xtran(0); xtran<20;xtran+=2)
+	for (int x(0); x<10;x++)
 	{
-		for (int ztran(0); ztran<20;ztran+=2)
+		for (int z(0); z<8;z++)
 		{
-			drawMaze(xtran, ztran);
+			if (map[x][z] == 1)
+			{
+				int xtran(x * 2);
+				int ztran(z * 2);
+				drawCrate(xtran, ztran);
+			}
+			else if (map[x][z] == 2)
+			{
+				int xtran(x * 2);
+				int ztran(z * 2);
+				drawCrate(xtran, ztran);
+				drawCoin(xtran, ztran);
+
+			}
+
 		}
 
 	}
+
+	drawTank();
+
 	//Unuse Shader
 	glUseProgram(0);
     
@@ -318,13 +348,30 @@ void Timer(int value)
 
 //function to draw the maze
 
-void drawMaze(float x, float z)
+void drawCrate(float x, float z)
 {
+
+	//Set Colour after program is in use
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, crateTexture);
+	glUniform1i(TextureMapUniformLocation, 0);
+
+	//Projection Matrix - Perspective Projection
+	ProjectionMatrix.perspective(40, 1.0, 0.0001, 100.0);
+
+	//Set Projection Matrix
+	glUniformMatrix4fv(
+			ProjectionUniformLocation,  //Uniform location
+			1,							//Number of Uniforms
+			false,						//Transpose Matrix
+			ProjectionMatrix.getPtr());	//Pointer to ModelViewMatrixValues
 
 
 	//Apply Camera Manipluator to Set Model View Matrix on GPU
 	ModelViewMatrix.toIdentity();
 	ModelViewMatrix.translate(x, 0.0, z);
+
+
 
 	Matrix4x4 m = cameraManip.apply(ModelViewMatrix);
 	glUniformMatrix4fv(
@@ -336,6 +383,84 @@ void drawMaze(float x, float z)
 
 
 	//Call Draw Geometry Function
-	mesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
+	crateMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
 }
 
+void drawCoin(float x, float z)
+{
+
+	//Set Colour after program is in use
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, coinTexture);
+	glUniform1i(TextureMapUniformLocation, 0);
+
+	//Projection Matrix - Perspective Projection
+	ProjectionMatrix.perspective(40, 1.0, 0.0001, 100.0);
+
+	//Set Projection Matrix
+	glUniformMatrix4fv(
+			ProjectionUniformLocation,  //Uniform location
+			1,							//Number of Uniforms
+			false,						//Transpose Matrix
+			ProjectionMatrix.getPtr());	//Pointer to ModelViewMatrixValues
+
+
+	//Apply Camera Manipluator to Set Model View Matrix on GPU
+	ModelViewMatrix.toIdentity();
+	ModelViewMatrix.translate(x, (2.0 + 0.1*cos(t_global/5)), z);
+	ModelViewMatrix.scale(.3,.3, .3);
+	ModelViewMatrix.rotate(4*t_global,0,1,0);
+
+
+	Matrix4x4 m = cameraManip.apply(ModelViewMatrix);
+	glUniformMatrix4fv(
+			MVMatrixUniformLocation,    //Uniform location
+			1,                            //Number of Uniforms
+			false,                        //Transpose Matrix
+			m.getPtr());                //Pointer to Matrix Values
+
+
+
+	//Call Draw Geometry Function
+	coinMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
+}
+
+
+void drawTank ()
+{
+	//Set Colour after program is in use
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, chassisTexture);
+	glUniform1i(TextureMapUniformLocation, 0);
+
+	//Projection Matrix - Perspective Projection
+	ProjectionMatrix.perspective(40, 1.0, 0.0001, 100.0);
+
+	//Set Projection Matrix
+	glUniformMatrix4fv(
+			ProjectionUniformLocation,  //Uniform location
+			1,							//Number of Uniforms
+			false,						//Transpose Matrix
+			ProjectionMatrix.getPtr());	//Pointer to ModelViewMatrixValues
+
+
+	//Apply Camera Manipluator to Set Model View Matrix on GPU
+	ModelViewMatrix.toIdentity();
+	ModelViewMatrix.translate(0, 0.0, 3);
+	ModelViewMatrix.scale(.3,.3, .3);
+
+
+
+
+	Matrix4x4 m = cameraManip.apply(ModelViewMatrix);
+	glUniformMatrix4fv(
+			MVMatrixUniformLocation,    //Uniform location
+			1,                            //Number of Uniforms
+			false,                        //Transpose Matrix
+			m.getPtr());                //Pointer to Matrix Values
+
+
+
+	//Call Draw Geometry Function
+	chassisMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
+}

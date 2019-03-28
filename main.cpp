@@ -25,8 +25,7 @@ void initTexture(std::string filename, GLuint & textureID);
 void drawCrate(float x, float y);					//draws translated box
 void drawCoin(float x, float y);					//draws translated coin
 void drawTank();
-
-
+void drawTurret ();
 
 //Global Variables
 GLuint shaderProgramID;			                    // Shader Program ID
@@ -42,12 +41,15 @@ GLuint turretTexture;
 
 float t_global = 0;
 
+
 //Viewing
 SphericalCameraManipulator cameraManip;
 Matrix4x4 ModelViewMatrix;		                    // ModelView Matrix
 GLuint MVMatrixUniformLocation;		                // ModelView Matrix Uniform
 Matrix4x4 ProjectionMatrix;		                    // Projection Matrix
 GLuint ProjectionUniformLocation;	                // Projection Matrix Uniform Location
+
+
 
 //Mesh
 Mesh crateMesh;
@@ -59,20 +61,26 @@ Mesh turretMesh;
 
 //map - can load this from file later !!top left must be a '1' for start position
 int map[8][10] = {
-		{1,0,0,0,0,0,0,1,1,1},
-		{2,2,2,2,0,0,0,1,0,0},
-		{1,0,0,1,0,0,0,2,0,0},
-		{1,0,0,1,0,0,0,1,0,1},
-		{1,2,1,1,0,0,0,1,0,1},
-		{0,0,0,1,1,1,1,2,0,1},
-		{0,0,0,1,0,0,0,0,0,1},
+		{1,0,0,0,0,0,0,1,1,1},    	//	   z⦿ --------> y
+		{2,2,2,2,0,0,0,1,0,0},		//		|
+		{1,0,0,1,0,0,0,2,0,0},		//		|
+		{1,0,0,1,0,0,0,1,0,1},		//		|
+		{1,2,1,1,0,0,0,1,0,1},		//	   \ /
+		{0,0,0,1,1,1,1,2,0,1},		//		v
+		{0,0,0,1,0,0,0,0,0,1},		//		x
 		{0,0,0,1,1,2,2,2,2,2}
 };
 
+//edit humvee
+float transHumx = 0.0, transHumy = 0.0, transHumz = 1.75;
+float scaleHumvee = 0.1;
+float rotateHumvee = 0.0;
+float radHum;
+float rotateTurret = 0.0;
 
 //! Screen size
-int screenWidth   	        = 720;
-int screenHeight   	        = 720;
+int screenWidth   	        = 1280;
+int screenHeight   	        = 800;
 
 //! Array of key states
 bool keyStates[256];
@@ -104,8 +112,8 @@ int main(int argc, char** argv)
 
 
 	//Init Camera Manipultor
-	cameraManip.setPanTiltRadius(0.f,0.f,2.f);
-	cameraManip.setFocus(turretMesh.getMeshCentroid());
+	cameraManip.setPanTiltRadius(rotateTurret,0.f,2.f);
+	cameraManip.setFocus(Vector3f(transHumx, transHumz, transHumy));
 
 	//load texture models
 	initTexture("../models/Crate.bmp", crateTexture);
@@ -223,11 +231,17 @@ void initTexture(std::string filename, GLuint & textureID)
 
 
 
-//! Display Loop     look at 5.3 for lighting
+//! Display Loop     **look at 5.3 for lighting
 void display(void)
 {
-    //increment time
-    t_global += 0.001;   //0.1 for cgilab
+
+
+
+
+	//move camera with hummer
+	cameraManip.setFocus(Vector3f(transHumx, transHumz, transHumy));
+
+
 
 	//Handle keys
     handleKeys();
@@ -243,13 +257,15 @@ void display(void)
 	glUseProgram(shaderProgramID);
 
 
+	//Projection Matrix - Perspective Projection
+	ProjectionMatrix.perspective(40, 1.0, 0.0005, 100.0);
+
+	radHum = (rotateHumvee * M_PI / 180);		//convert bearing to rads
 
 
-	//use 5.1 to get tank texture/model
-
-	for (int x(0); x<10;x++)
+	for (int x(0); x<8;x++)
 	{
-		for (int z(0); z<8;z++)
+		for (int z(0); z<10;z++)
 		{
 			if (map[x][z] == 1)
 			{
@@ -271,6 +287,7 @@ void display(void)
 	}
 
 	drawTank();
+	drawTurret ();
 
 	//Unuse Shader
 	glUseProgram(0);
@@ -295,6 +312,11 @@ void keyboard(unsigned char key, int x, int y)
 	{
 		exit(0);
 	}
+
+	//translate hummer
+	/*if (key == 'w')
+	{
+	}*/
     
     //Set key status
     keyStates[key] = true;
@@ -311,36 +333,52 @@ void keyUp(unsigned char key, int x, int y)
 void handleKeys()
 {
     //keys should be handled here
-	if(keyStates['a'])
+	if(keyStates['w'])
     {
-
+		transHumx+=0.001*sin(radHum);
+		transHumy+=0.001*cos(radHum);
     }
 
-	//Quits program when esc is pressed
-	if (keyStates['a'])	//esc key code
+	if(keyStates['s'])
 	{
-		exit(0);
+		transHumx-=0.001*sin(radHum);
+		transHumy-=0.001*cos(radHum);
+	}
+
+	if(keyStates['a'])
+	{
+		rotateHumvee+=0.05;
+	}
+
+	if(keyStates['d'])
+	{
+		rotateHumvee-=0.05;
 	}
 }
 
 //! Mouse Interaction
 void mouse(int button, int state, int x, int y)
 {
+
 	cameraManip.handleMouse(button, state,x,y);
 	glutPostRedisplay();
+
 }
 
 //! Motion
 void motion(int x, int y)
 {
+
 	cameraManip.handleMouseMotion(x,y);
+
 	glutPostRedisplay();
 }
 
 //! Timer Function
 void Timer(int value)
 {
-    
+	//increment time normalised?
+	t_global += 0.01;   //0.1 for cgilab machines?
     //Call function again after 10 milli seconds
 	glutTimerFunc(10,Timer, 0);
 }
@@ -356,8 +394,7 @@ void drawCrate(float x, float z)
 	glBindTexture(GL_TEXTURE_2D, crateTexture);
 	glUniform1i(TextureMapUniformLocation, 0);
 
-	//Projection Matrix - Perspective Projection
-	ProjectionMatrix.perspective(40, 1.0, 0.0001, 100.0);
+
 
 	//Set Projection Matrix
 	glUniformMatrix4fv(
@@ -394,8 +431,7 @@ void drawCoin(float x, float z)
 	glBindTexture(GL_TEXTURE_2D, coinTexture);
 	glUniform1i(TextureMapUniformLocation, 0);
 
-	//Projection Matrix - Perspective Projection
-	ProjectionMatrix.perspective(40, 1.0, 0.0001, 100.0);
+
 
 	//Set Projection Matrix
 	glUniformMatrix4fv(
@@ -428,6 +464,7 @@ void drawCoin(float x, float z)
 
 void drawTank ()
 {
+
 	//chassis
 
 	//Set Colour after program is in use
@@ -435,8 +472,7 @@ void drawTank ()
 	glBindTexture(GL_TEXTURE_2D, chassisTexture);
 	glUniform1i(TextureMapUniformLocation, 0);
 
-	//Projection Matrix - Perspective Projection
-	ProjectionMatrix.perspective(40, 1.0, 0.0001, 100.0);
+
 
 	//Set Projection Matrix
 	glUniformMatrix4fv(
@@ -448,8 +484,18 @@ void drawTank ()
 
 	//Apply Camera Manipluator to Set Model View Matrix on GPU
 	ModelViewMatrix.toIdentity();
-	ModelViewMatrix.translate(0, 1.7, 0);
-	ModelViewMatrix.scale(.2,.2, .2);
+	ModelViewMatrix.translate(transHumx, transHumz, transHumy);
+	ModelViewMatrix.scale(scaleHumvee,scaleHumvee,scaleHumvee);
+	ModelViewMatrix.rotate(rotateHumvee,0,1,0);
+	if ( rotateHumvee > 360)
+	{
+		rotateHumvee = 0;
+	}
+
+	if ( rotateHumvee < 0)
+	{
+		rotateHumvee = 360;
+	}
 
 
 
@@ -473,6 +519,49 @@ void drawTank ()
 	//back_wheel Call Draw Geometry Function
 	back_wheelMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
 
+
+}
+
+
+void drawTurret ()
+{
+
+//Set Colour after program is in use
+glActiveTexture(GL_TEXTURE0);
+glBindTexture(GL_TEXTURE_2D, chassisTexture);
+glUniform1i(TextureMapUniformLocation, 0);
+
+
+
+//Set Projection Matrix
+glUniformMatrix4fv(
+ProjectionUniformLocation,  //Uniform location
+1,							//Number of Uniforms
+false,						//Transpose Matrix
+ProjectionMatrix.getPtr());	//Pointer to ModelViewMatrixValues
+
+
+//Apply Camera Manipluator to Set Model View Matrix on GPU
+	ModelViewMatrix.toIdentity();
+	ModelViewMatrix.translate(transHumx, transHumz, transHumy);
+	ModelViewMatrix.scale(scaleHumvee,scaleHumvee,scaleHumvee);
+
+	rotateTurret = cameraManip.getPan() * 180 / M_PI;
+	std::cout << rotateTurret << std::endl;
+	ModelViewMatrix.rotate(rotateTurret,0,1,0);
+
+
+Matrix4x4 m = cameraManip.apply(ModelViewMatrix);
+glUniformMatrix4fv(
+MVMatrixUniformLocation,    //Uniform location
+1,                            //Number of Uniforms
+false,                        //Transpose Matrix
+m.getPtr());                //Pointer to Matrix Values
+
+
+
 	//turret Call Draw Geometry Function
-	turretMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
+
+
+turretMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
 }

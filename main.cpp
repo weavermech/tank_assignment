@@ -109,7 +109,7 @@ int main(int argc, char** argv)
 
 	//load texture models
 	initTexture("../models/Crate.bmp", crateTexture);
-	initTexture("../models/globe.bmp", coinTexture);
+	initTexture("../models/fbsz.bmp", coinTexture);
 	initTexture("../models/hamvee.bmp", chassisTexture);
 
 
@@ -227,7 +227,7 @@ void initTexture(std::string filename, GLuint & textureID)
 void display(void)
 {
     //increment time
-    t_global += 0.1;
+    t_global += 0.001;   //0.1 for cgilab
 
 	//Handle keys
     handleKeys();
@@ -369,7 +369,7 @@ void drawCrate(float x, float z)
 
 	//Apply Camera Manipluator to Set Model View Matrix on GPU
 	ModelViewMatrix.toIdentity();
-	ModelViewMatrix.translate(x, 0.0, z);
+	ModelViewMatrix.translate(x, 0.8, z);
 
 
 
@@ -407,7 +407,7 @@ void drawCoin(float x, float z)
 
 	//Apply Camera Manipluator to Set Model View Matrix on GPU
 	ModelViewMatrix.toIdentity();
-	ModelViewMatrix.translate(x, (2.0 + 0.1*cos(t_global/5)), z);
+	ModelViewMatrix.translate(x, (2.8 + 0.1*cos(t_global/5)), z);
 	ModelViewMatrix.scale(.3,.3, .3);
 	ModelViewMatrix.rotate(4*t_global,0,1,0);
 
@@ -428,6 +428,8 @@ void drawCoin(float x, float z)
 
 void drawTank ()
 {
+	//chassis
+
 	//Set Colour after program is in use
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, chassisTexture);
@@ -446,8 +448,8 @@ void drawTank ()
 
 	//Apply Camera Manipluator to Set Model View Matrix on GPU
 	ModelViewMatrix.toIdentity();
-	ModelViewMatrix.translate(0, 0.0, 3);
-	ModelViewMatrix.scale(.3,.3, .3);
+	ModelViewMatrix.translate(0, 1.7, 0);
+	ModelViewMatrix.scale(.2,.2, .2);
 
 
 
@@ -463,4 +465,14 @@ void drawTank ()
 
 	//Call Draw Geometry Function
 	chassisMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
+
+
+	//front_wheel Call Draw Geometry Function
+	front_wheelMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
+
+	//back_wheel Call Draw Geometry Function
+	back_wheelMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
+
+	//turret Call Draw Geometry Function
+	turretMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
 }

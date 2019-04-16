@@ -35,9 +35,7 @@ GLuint TextureMapUniformLocation;					// Texture Map Location
 GLuint crateTexture;
 GLuint coinTexture;
 GLuint chassisTexture;
-GLuint front_wheelTexture;
-GLuint back_wheelTexture;
-GLuint turretTexture;
+
 
 float t_global = 0;
 
@@ -77,6 +75,10 @@ float scaleHumvee = 0.1;
 float rotateHumvee = 0.0;
 float radHum;
 float rotateTurret = 0.0;
+float rotatewheel = 0.0;
+float cpuScale = 0.07;
+float zoom =0.1;
+
 
 //! Screen size
 int screenWidth   	        = 1280;
@@ -335,24 +337,26 @@ void handleKeys()
     //keys should be handled here
 	if(keyStates['w'])
     {
-		transHumx+=0.001*sin(radHum);
-		transHumy+=0.001*cos(radHum);
+		transHumx+=cpuScale*sin(radHum);
+		transHumy+=cpuScale*cos(radHum);
+		rotatewheel+=1000*cpuScale;
     }
 
 	if(keyStates['s'])
 	{
-		transHumx-=0.001*sin(radHum);
-		transHumy-=0.001*cos(radHum);
+		transHumx-=cpuScale*sin(radHum);
+		transHumy-=cpuScale*cos(radHum);
+		rotatewheel-=1000*cpuScale;
 	}
 
 	if(keyStates['a'])
 	{
-		rotateHumvee+=0.05;
+		rotateHumvee+=50*cpuScale;
 	}
 
 	if(keyStates['d'])
 	{
-		rotateHumvee-=0.05;
+		rotateHumvee-=50*cpuScale;
 	}
 }
 
@@ -443,9 +447,9 @@ void drawCoin(float x, float z)
 
 	//Apply Camera Manipluator to Set Model View Matrix on GPU
 	ModelViewMatrix.toIdentity();
-	ModelViewMatrix.translate(x, (2.8 + 0.1*cos(t_global/5)), z);
+	ModelViewMatrix.translate(x, (2.8 + 3*cpuScale*cos(t_global/0.5)), z);
 	ModelViewMatrix.scale(.3,.3, .3);
-	ModelViewMatrix.rotate(4*t_global,0,1,0);
+	ModelViewMatrix.rotate(800*cpuScale*t_global,0,1,0);
 
 
 	Matrix4x4 m = cameraManip.apply(ModelViewMatrix);
@@ -487,7 +491,7 @@ void drawTank ()
 	ModelViewMatrix.translate(transHumx, transHumz, transHumy);
 	ModelViewMatrix.scale(scaleHumvee,scaleHumvee,scaleHumvee);
 	ModelViewMatrix.rotate(rotateHumvee,0,1,0);
-	if ( rotateHumvee > 360)
+	if ( rotateHumvee > 360) 	//restricts compass bearing value 0-360
 	{
 		rotateHumvee = 0;
 	}
@@ -496,6 +500,21 @@ void drawTank ()
 	{
 		rotateHumvee = 360;
 	}
+
+	int fallx(ceil ((transHumx-1)/2)), fally (ceil((transHumy-1)/2)); //maths no normalise location to map
+
+	if (map[fallx][fally] == 0 ) // drop tank if map value is zero
+		transHumz -=1;
+
+	if (transHumz < -30)
+	{
+
+		for (int inf(1); inf < 2; inf--)
+		{
+			std::cout << " END " << std::endl;
+		}
+	}
+
 
 
 
@@ -513,6 +532,7 @@ void drawTank ()
 	chassisMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
 
 
+	ModelViewMatrix.rotate(rotatewheel,0,0,1);
 	//front_wheel Call Draw Geometry Function
 	front_wheelMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
 
@@ -547,7 +567,7 @@ ProjectionMatrix.getPtr());	//Pointer to ModelViewMatrixValues
 	ModelViewMatrix.scale(scaleHumvee,scaleHumvee,scaleHumvee);
 
 	rotateTurret = cameraManip.getPan() * 180 / M_PI;
-	std::cout << rotateTurret << std::endl;
+	std::cout << rotateTurret << " " << transHumx << " "<< transHumz << " " << transHumy << std::endl;
 	ModelViewMatrix.rotate(rotateTurret,0,1,0);
 
 

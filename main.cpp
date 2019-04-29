@@ -576,6 +576,7 @@ void drawTank ()
 	chassisMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
 
 
+	std::cout << " xx" <<  rotatewheel << "xx " << std::endl;
 	ModelViewMatrix.rotate(rotatewheel,0,0,1);
 	//front_wheel Call Draw Geometry Function
 	front_wheelMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
@@ -677,9 +678,9 @@ void drawBullet()
 		std::cout << bulletOriginz << "| |"  << std::endl;
 		count++;	//when bullet dies
 
-		int collidex(ceil ((bulletOriginx-1)/2)), collidey (ceil((bulletOriginx-1)/2)); //maths no normalise location to map
+		int collidex(ceil ((bulletOriginx-1)/2)), collidey (ceil((bulletOriginx-1)/2)); //maths to normalise location to map
 
-		if (sqrt((bulletOriginx*bulletOriginx) + (bulletOriginy*bulletOriginy)) > 30 || bulletOriginz < -4)// || (bulletOriginz < 1.9 && map[collidex][collidex] != 0 ))
+		if (sqrt((bulletOriginx*bulletOriginx) + (bulletOriginy*bulletOriginy)) > 30 || bulletOriginz < -4 || (bulletOriginz < 1 && map[collidex][collidex] != 0 )) //cancel bullet if too far from origin, way below map, or collides with box
 		{
 			fired = false;
 			count = 0;

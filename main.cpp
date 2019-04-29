@@ -26,6 +26,8 @@ void drawCrate(float x, float y);					//draws translated box
 void drawCoin(float x, float y);					//draws translated coin
 void drawTank();
 void drawTurret ();
+void drawBullet ();
+
 
 //Global Variables
 GLuint shaderProgramID;			                    // Shader Program ID
@@ -35,6 +37,7 @@ GLuint TextureMapUniformLocation;					// Texture Map Location
 GLuint crateTexture;
 GLuint coinTexture;
 GLuint chassisTexture;
+GLuint bulletTexture;
 
 
 float t_global = 0;
@@ -56,6 +59,7 @@ Mesh chassisMesh;
 Mesh front_wheelMesh;
 Mesh back_wheelMesh;
 Mesh turretMesh;
+Mesh bulletMesh;
 
 //map - can load this from file later !!top left must be a '1' for start position
 int map[8][10] = {
@@ -75,9 +79,18 @@ float scaleHumvee = 0.1;
 float rotateHumvee = 0.0;
 float radHum;
 float rotateTurret = 0.0;
+float tiltTurret = 0.0;
 float rotatewheel = 0.0;
 float cpuScale = 0.07;
 float zoom =0.1;
+
+//bullet
+bool fired = false;
+float firedTime;
+int count;
+float bulletOriginx = 0.0, bulletOriginy = 0.0, bulletOriginz = 0.2;
+float bulletAngle;
+float bulletDir;
 
 
 //! Screen size
@@ -106,11 +119,12 @@ int main(int argc, char** argv)
 	//Init Mesh Geometry
 	//mesh.initCube();
 	crateMesh.loadOBJ("../models/cube.obj");
-	coinMesh.loadOBJ("../models/ball.obj");
+	coinMesh.loadOBJ("../models/coin.obj");
 	chassisMesh.loadOBJ("../models/chassis.obj");
 	front_wheelMesh.loadOBJ("../models/front_wheel.obj");
 	back_wheelMesh.loadOBJ("../models/back_wheel.obj");
 	turretMesh.loadOBJ("../models/turret.obj");
+	bulletMesh.loadOBJ("../models/ball.obj");
 
 
 	//Init Camera Manipultor
@@ -119,8 +133,10 @@ int main(int argc, char** argv)
 
 	//load texture models
 	initTexture("../models/Crate.bmp", crateTexture);
-	initTexture("../models/fbsz.bmp", coinTexture);
+	initTexture("../models/coin.bmp", coinTexture);
 	initTexture("../models/hamvee.bmp", chassisTexture);
+	initTexture("../models/ball.bmp", bulletTexture);
+
 
 
 	//Start main loop
@@ -289,7 +305,12 @@ void display(void)
 	}
 
 	drawTank();
-	drawTurret ();
+	drawTurret();
+	drawBullet();
+
+	//bullet time!
+
+
 
 	//Unuse Shader
 	glUseProgram(0);
@@ -366,6 +387,26 @@ void mouse(int button, int state, int x, int y)
 
 	cameraManip.handleMouse(button, state,x,y);
 	glutPostRedisplay();
+
+	//Left Button Action
+	if(button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
+
+	{
+		//if (!fired)		//prevents fired reset
+		//{
+			fired = true;
+			bulletOriginx = transHumx;
+			bulletOriginz = transHumz + 0.2;
+			bulletOriginy = transHumy;
+			bulletAngle = (tiltTurret+0.2) * M_PI / 180;		//convert turret bearing to rads;
+			bulletDir = rotateTurret * M_PI / 180;		//convert turret bearing to rads
+
+		//}
+
+
+
+	}
+
 
 }
 
@@ -567,7 +608,9 @@ ProjectionMatrix.getPtr());	//Pointer to ModelViewMatrixValues
 	ModelViewMatrix.scale(scaleHumvee,scaleHumvee,scaleHumvee);
 
 	rotateTurret = cameraManip.getPan() * 180 / M_PI;
-	std::cout << rotateTurret << " " << transHumx << " "<< transHumz << " " << transHumy << std::endl;
+	tiltTurret = cameraManip.getTilt() * -180 / M_PI;
+
+	std::cout << rotateTurret << " #" << tiltTurret << "# " << transHumx << " "<< transHumz << " " << transHumy << std::endl;
 	ModelViewMatrix.rotate(rotateTurret,0,1,0);
 
 
@@ -584,4 +627,58 @@ m.getPtr());                //Pointer to Matrix Values
 
 
 turretMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
+}
+
+void drawBullet()
+{
+
+	if (fired)
+	{
+
+
+		//Set Colour after program is in use
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, bulletTexture);
+		glUniform1i(TextureMapUniformLocation, 0);
+
+		//Set Projection Matrix
+		glUniformMatrix4fv(
+				ProjectionUniformLocation,  //Uniform location
+				1,                            //Number of Uniforms
+				false,                        //Transpose Matrix
+				ProjectionMatrix.getPtr());    //Pointer to ModelViewMatrixValues
+
+		//Apply Camera Manipluator to Set Model View Matrix on GPU
+		ModelViewMatrix.toIdentity();
+		ModelViewMatrix.translate(bulletOriginx,bulletOriginz, bulletOriginy );
+		ModelViewMatrix.scale(0.03, 0.03, 0.03);
+
+
+		Matrix4x4 m = cameraManip.apply(ModelViewMatrix);
+		glUniformMatrix4fv(
+				MVMatrixUniformLocation,    //Uniform location
+				1,                            //Number of Uniforms
+				false,                        //Transpose Matrix
+				m.getPtr());                //Pointer to Matrix Values
+
+
+
+		//Call Draw Geometry Function
+		bulletMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
+
+		bulletOriginx +=sin(bulletDir);
+		bulletOriginz +=cpuScale*cos(bulletAngle) ;
+		bulletOriginy +=cos(bulletDir);
+
+	    std::cout << bulletDir << "| |" << sin(bulletDir) << "|  bullet  x" << bulletOriginx << "x x" << bulletOriginx  << "x x" << bulletOriginx << "x" << std::endl;
+		count++;	//when bullet dies
+		if (count > 30 || bulletOriginz < -2)
+		{
+			fired = false;
+			count = 0;
+		}
+
+
+	}
+
 }

@@ -91,11 +91,12 @@ int count;
 float bulletOriginx = 0.0, bulletOriginy = 0.0, bulletOriginz = 0.2;
 float bulletAngle;
 float bulletDir;
+float launchTime;
 
 
 //! Screen size
-int screenWidth   	        = 1280;
-int screenHeight   	        = 800;
+int screenWidth   	        = 1720;
+int screenHeight   	        = 1200;
 
 //! Array of key states
 bool keyStates[256];
@@ -400,6 +401,7 @@ void mouse(int button, int state, int x, int y)
 			bulletOriginy = transHumy;
 			bulletAngle = (tiltTurret+0.2) * M_PI / 180;		//convert turret bearing to rads;
 			bulletDir = rotateTurret * M_PI / 180;		//convert turret bearing to rads
+			launchTime = t_global;
 
 		//}
 
@@ -423,6 +425,7 @@ void motion(int x, int y)
 void Timer(int value)
 {
 	//increment time normalised?
+	std::cout << " |"<< t_global << "| |" << (9.8*((t_global*launchTime)*(t_global*launchTime))) << std::endl;
 	t_global += 0.01;   //0.1 for cgilab machines?
     //Call function again after 10 milli seconds
 	glutTimerFunc(10,Timer, 0);
@@ -610,7 +613,7 @@ ProjectionMatrix.getPtr());	//Pointer to ModelViewMatrixValues
 	rotateTurret = cameraManip.getPan() * 180 / M_PI;
 	tiltTurret = cameraManip.getTilt() * -180 / M_PI;
 
-	std::cout << rotateTurret << " #" << tiltTurret << "# " << transHumx << " "<< transHumz << " " << transHumy << std::endl;
+	//std::cout << rotateTurret << " #" << tiltTurret << "# " << transHumx << " "<< transHumz << " " << transHumy << std::endl;
 	ModelViewMatrix.rotate(rotateTurret,0,1,0);
 
 
@@ -666,13 +669,17 @@ void drawBullet()
 		//Call Draw Geometry Function
 		bulletMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
 
-		bulletOriginx +=sin(bulletDir);
-		bulletOriginz +=cpuScale*cos(bulletAngle) ;
-		bulletOriginy +=cos(bulletDir);
+		bulletOriginx +=sin(bulletDir)*.5;
+		bulletOriginz +=(cpuScale*cos(bulletAngle)) -(1*((t_global-launchTime)*(t_global-launchTime)));
+		bulletOriginy +=cos(bulletDir)*.5;
 
-	    std::cout << bulletDir << "| |" << sin(bulletDir) << "|  bullet  x" << bulletOriginx << "x x" << bulletOriginx  << "x x" << bulletOriginx << "x" << std::endl;
+	    //std::cout << bulletDir << "| |" << sin(bulletDir) << "|  bullet  x" << bulletOriginx << "x x" << bulletOriginx  << "x x" << bulletOriginx << "x" << std::endl;
+		std::cout << bulletOriginz << "| |"  << std::endl;
 		count++;	//when bullet dies
-		if (count > 30 || bulletOriginz < -2)
+
+		int collidex(ceil ((bulletOriginx-1)/2)), collidey (ceil((bulletOriginx-1)/2)); //maths no normalise location to map
+
+		if (sqrt((bulletOriginx*bulletOriginx) + (bulletOriginy*bulletOriginy)) > 30 || bulletOriginz < -4)// || (bulletOriginz < 1.9 && map[collidex][collidex] != 0 ))
 		{
 			fired = false;
 			count = 0;

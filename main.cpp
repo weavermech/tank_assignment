@@ -75,14 +75,15 @@ int map[8][10] = {
 
 //edit humvee
 float transHumx = 0.0, transHumy = 0.0, transHumz = 1.75;
-float scaleHumvee = 0.1;
-float rotateHumvee = 0.0;
+float scaleHumvee(0.3);
+float rotateHumvee(0.0);
 float radHum;
-float rotateTurret = 0.0;
-float tiltTurret = 0.0;
-float rotatewheel = 0.0;
-float cpuScale = 0.07;
-float zoom =0.1;
+float rotateTurret(0.0);
+float tiltTurret(0.0);
+float rotatewheel(0.0);
+float wheelRads(0.0);
+float cpuScale(0.07);
+float zoom(0.1);
 
 //bullet
 bool fired = false;
@@ -361,14 +362,16 @@ void handleKeys()
     {
 		transHumx+=cpuScale*sin(radHum);
 		transHumy+=cpuScale*cos(radHum);
-		rotatewheel+=1000*cpuScale;
+		rotatewheel+=100*cpuScale;
+		wheelRads = rotatewheel* 180 / M_PI;
     }
 
 	if(keyStates['s'])
 	{
 		transHumx-=cpuScale*sin(radHum);
 		transHumy-=cpuScale*cos(radHum);
-		rotatewheel-=1000*cpuScale;
+		rotatewheel-=100*cpuScale;
+		wheelRads = rotatewheel* 180 / M_PI;
 	}
 
 	if(keyStates['a'])
@@ -492,7 +495,7 @@ void drawCoin(float x, float z)
 	//Apply Camera Manipluator to Set Model View Matrix on GPU
 	ModelViewMatrix.toIdentity();
 	ModelViewMatrix.translate(x, (2.8 + 3*cpuScale*cos(t_global/0.5)), z);
-	ModelViewMatrix.scale(.3,.3, .3);
+	ModelViewMatrix.scale(.3,.3,.3);
 	ModelViewMatrix.rotate(800*cpuScale*t_global,0,1,0);
 
 
@@ -576,11 +579,30 @@ void drawTank ()
 	chassisMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
 
 
-	std::cout << " xx" <<  rotatewheel << "xx " << std::endl;
-	ModelViewMatrix.rotate(rotatewheel,0,0,1);
+
+	std::cout << " xxxxxxxxxxxxx" <<  wheelRads << "xx  " << rotateHumvee << std::endl;
+	ModelViewMatrix.rotate(wheelRads,1,0,0);
+
+	Matrix4x4 n = cameraManip.apply(ModelViewMatrix);
+
+	glUniformMatrix4fv(
+			MVMatrixUniformLocation,    //Uniform location
+			1,                            //Number of Uniforms
+			false,                        //Transpose Matrix
+			n.getPtr());                //Pointer to Matrix Values
 	//front_wheel Call Draw Geometry Function
 	front_wheelMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
 
+
+	ModelViewMatrix.rotate(wheelRads,1,0,0);
+
+
+	Matrix4x4 o = cameraManip.apply(ModelViewMatrix);
+	glUniformMatrix4fv(
+			MVMatrixUniformLocation,    //Uniform location
+			1,                            //Number of Uniforms
+			false,                        //Transpose Matrix
+			o.getPtr());                //Pointer to Matrix Values
 	//back_wheel Call Draw Geometry Function
 	back_wheelMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
 

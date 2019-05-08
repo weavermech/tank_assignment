@@ -76,14 +76,14 @@ int map[8][10] = {
 };
 
 //edit humvee
-float transHumx = 0.0, transHumy = 0.0, transHumz = 1.75;
-float scaleHumvee = 0.1;
+float transHumx = 0.0, transHumy = 0.0, transHumz = 1.66;
+float scaleHumvee = 0.3;
 float rotateHumvee = 0.0;
 float radHum;
 float rotateTurret = 0.0;
 float tiltTurret = 0.0;
 float rotatewheel = 0.0;
-float cpuScale = 0.07;
+float cpuScale = 0.001;
 float zoom =0.1;
 
 //bullet
@@ -674,18 +674,20 @@ void drawwheels()
 	//float wheey(sin(rotatewheel));
 	std::cout << " xx" <<  rotatewheel << "xx " << std::endl;
 	Matrix4x4 front_wheel = cameraManip.apply(ModelViewMatrix);
+	front_wheel.translate(0, 0.97, 2.1);
+	front_wheel.rotate((rotatewheel/10), 1, 0.f, 0.f);
+	front_wheel.translate(0, -0.97, -2.1);
 
-
-	Matrix4x4 front_wheelmesh = cameraManip.apply(ModelViewMatrix);
+	//Matrix4x4 front_wheelmesh = cameraManip.apply(ModelViewMatrix);
 	glUniformMatrix4fv(MVMatrixUniformLocation, 1, false, front_wheel.getPtr());
 	front_wheelMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
 
 
 	//-------------------------------------------------------------------back_wheel
 	Matrix4x4 back_wheel = cameraManip.apply(ModelViewMatrix);
-	//back_wheel.translate(0, 0, 0);
-	//back_wheel.rotate((rotatewheel), 1, 0.f, 0.f);
-	//back_wheel.translate(0, 0, 0);
+	back_wheel.translate(0, 1.05, -1.28);
+	back_wheel.rotate((rotatewheel/10), 1, 0.f, 0.f);
+	back_wheel.translate(0, -1.05, 1.28);
 
 	glUniformMatrix4fv(MVMatrixUniformLocation, 1, false, back_wheel.getPtr());
 	back_wheelMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);

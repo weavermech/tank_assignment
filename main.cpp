@@ -27,6 +27,8 @@ void drawCoin(float x, float y);					//draws translated coin
 void drawTank();
 void drawTurret ();
 void drawBullet ();
+void drawwheels();
+void render2dText(std::string text, float r, float g, float b, float x, float y);
 
 
 //Global Variables
@@ -75,15 +77,14 @@ int map[8][10] = {
 
 //edit humvee
 float transHumx = 0.0, transHumy = 0.0, transHumz = 1.75;
-float scaleHumvee(0.3);
-float rotateHumvee(0.0);
+float scaleHumvee = 0.1;
+float rotateHumvee = 0.0;
 float radHum;
-float rotateTurret(0.0);
-float tiltTurret(0.0);
-float rotatewheel(0.0);
-float wheelRads(0.0);
-float cpuScale(0.07);
-float zoom(0.1);
+float rotateTurret = 0.0;
+float tiltTurret = 0.0;
+float rotatewheel = 0.0;
+float cpuScale = 0.07;
+float zoom =0.1;
 
 //bullet
 bool fired = false;
@@ -93,6 +94,20 @@ float bulletOriginx = 0.0, bulletOriginy = 0.0, bulletOriginz = 0.2;
 float bulletAngle;
 float bulletDir;
 float launchTime;
+
+
+
+
+//all copied score stuff
+//Score
+int s = 0;
+int shoot = 0;
+int shoottime = 0;
+int endgame = 0;
+int countdown = 1;
+int temp;
+int showinfo = 0;
+int totalscore = 0;
 
 
 //! Screen size
@@ -307,22 +322,59 @@ void display(void)
 	}
 
 	drawTank();
+	drawwheels();
 	drawTurret();
 	drawBullet();
-
-	//bullet time!
-
-
 
 	//Unuse Shader
 	glUseProgram(0);
     
-    
-    
-    
-    
+    //text
 
-    //Swap Buffers and post redisplay
+    int showinfo = 1; /// to toggle info
+    int level = 1;
+	char time[100];
+	char score[100];
+	char coinleft[100];
+	char levelnow[100];
+
+	if (showinfo == 1)
+	{
+		render2dText("Manually Level Select(1-6)", 1.0, 1.0, 1.0, -1.0, -0.70);
+		render2dText("Tank Move(WSAD)", 1.0, 1.0, 1.0, -1.0, -0.75);
+		render2dText("turret Rotate(JK) Reset(L) Lock(^L)", 1.0, 1.0, 1.0, -1.0, -0.80);
+		render2dText("Change View (V)", 1.0, 1.0, 1.0, -1.0, -0.85);
+		render2dText("Manual View On(E) Reset(^E)", 1.0, 1.0, 1.0, -1.0, -0.90);
+		render2dText("Mesh View On(Q) Reset(^Q)", 1.0, 1.0, 1.0, -1.0, -0.95);
+		render2dText("Zoom In(=) Out(-)", 1.0, 1.0, 1.0, -1.0, -1.00);
+	}
+
+	sprintf(levelnow, "Level %i", level);
+	render2dText(levelnow, 1.0, 1.0, 1.0, -1.0, 0.95);
+
+	countdown = int(40 - t_global);
+	sprintf(time, "Time = %i", countdown);
+	render2dText(time, 1.0, 1.0, 1.0, -1.0, 0.90);
+
+	sprintf(score, "Total Score = %i", totalscore);
+	render2dText(score, 1.0, 1.0, 1.0, -1.0, 0.85);
+
+	sprintf(coinleft, "Coin(s) Left = %i/%i", count, (count + s));
+	render2dText(coinleft, 1.0, 1.0, 1.0, -1.0, 0.80);
+
+	render2dText("Info Open(I) Close(O)", 1.0, 1.0, 1.0, -1.0, 0.75);
+
+	if (temp ==1) render2dText("Level Completed", 1.0, 1.0, 1.0, 0.0, 0.75);
+	if (temp ==2) render2dText("Game Over", 1.0, 1.0, 1.0, 0.0, 0.70);
+
+	//reset
+	//tanky = 0;
+
+
+	//end text
+
+
+	//Swap Buffers and post redisplay
 	glutSwapBuffers();
 	glutPostRedisplay();
 }
@@ -362,16 +414,15 @@ void handleKeys()
     {
 		transHumx+=cpuScale*sin(radHum);
 		transHumy+=cpuScale*cos(radHum);
-		rotatewheel+=100*cpuScale;
-		wheelRads = rotatewheel* 180 / M_PI;
+		rotatewheel+=1000*cpuScale;
+
     }
 
 	if(keyStates['s'])
 	{
 		transHumx-=cpuScale*sin(radHum);
 		transHumy-=cpuScale*cos(radHum);
-		rotatewheel-=100*cpuScale;
-		wheelRads = rotatewheel* 180 / M_PI;
+		rotatewheel-=1000*cpuScale;
 	}
 
 	if(keyStates['a'])
@@ -396,8 +447,8 @@ void mouse(int button, int state, int x, int y)
 	if(button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
 
 	{
-		//if (!fired)		//prevents fired reset
-		//{
+		if (!fired)		//prevents fired reset
+		{
 			fired = true;
 			bulletOriginx = transHumx;
 			bulletOriginz = transHumz + 0.2;
@@ -406,7 +457,7 @@ void mouse(int button, int state, int x, int y)
 			bulletDir = rotateTurret * M_PI / 180;		//convert turret bearing to rads
 			launchTime = t_global;
 
-		//}
+		}
 
 
 
@@ -428,7 +479,7 @@ void motion(int x, int y)
 void Timer(int value)
 {
 	//increment time normalised?
-	std::cout << " |"<< t_global << "| |" << (9.8*((t_global*launchTime)*(t_global*launchTime))) << std::endl;
+	//std::cout << " |"<< t_global << "| |" << (9.8*((t_global*launchTime)*(t_global*launchTime))) << std::endl;
 	t_global += 0.01;   //0.1 for cgilab machines?
     //Call function again after 10 milli seconds
 	glutTimerFunc(10,Timer, 0);
@@ -495,7 +546,7 @@ void drawCoin(float x, float z)
 	//Apply Camera Manipluator to Set Model View Matrix on GPU
 	ModelViewMatrix.toIdentity();
 	ModelViewMatrix.translate(x, (2.8 + 3*cpuScale*cos(t_global/0.5)), z);
-	ModelViewMatrix.scale(.3,.3,.3);
+	ModelViewMatrix.scale(.3,.3, .3);
 	ModelViewMatrix.rotate(800*cpuScale*t_global,0,1,0);
 
 
@@ -578,37 +629,68 @@ void drawTank ()
 	//Call Draw Geometry Function
 	chassisMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
 
+    /*float wheex(cos(rotatewheel));
+    float wheey(sin(rotatewheel));
+	std::cout << " xx" <<  rotatewheel << "xx " << std::endl;
+	Matrix4x4 front_wheel = cameraManip.apply(ModelViewMatrix);
+	front_wheel.translate(0,0, -1);
+	front_wheel.rotate((rotatewheel/10), 1, 0.f, 0.f);
+
+	//front_wheel.translate(0,-wheex,-wheey);
+
+	Matrix4x4 front_wheelmesh = cameraManip.apply(ModelViewMatrix);
+	glUniformMatrix4fv(MVMatrixUniformLocation, 1, false, front_wheel.getPtr());
+	front_wheelMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
+
+	//-------------------------------------------------------------------back_wheel
+	Matrix4x4 back_wheel = cameraManip.apply(ModelViewMatrix);
+	//back_wheel.translate(0, 0, 0);
+	//back_wheel.rotate((rotatewheel), 1, 0.f, 0.f);
+	//back_wheel.translate(0, 0, 0);
+
+	glUniformMatrix4fv(MVMatrixUniformLocation, 1, false, back_wheel.getPtr());
+	back_wheelMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
+*/
+}
+
+void drawwheels()
+{
+	//Set Colour after program is in use
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, chassisTexture);
+	glUniform1i(TextureMapUniformLocation, 0);
 
 
-	std::cout << " xxxxxxxxxxxxx" <<  wheelRads << "xx  " << rotateHumvee << std::endl;
-	ModelViewMatrix.rotate(wheelRads,1,0,0);
 
-	Matrix4x4 n = cameraManip.apply(ModelViewMatrix);
-
+	//Set Projection Matrix
 	glUniformMatrix4fv(
-			MVMatrixUniformLocation,    //Uniform location
-			1,                            //Number of Uniforms
-			false,                        //Transpose Matrix
-			n.getPtr());                //Pointer to Matrix Values
-	//front_wheel Call Draw Geometry Function
+			ProjectionUniformLocation,  //Uniform location
+			1,							//Number of Uniforms
+			false,						//Transpose Matrix
+			ProjectionMatrix.getPtr());	//Pointer to ModelViewMatrixValues
+
+
+	//float wheex(cos(rotatewheel));
+	//float wheey(sin(rotatewheel));
+	std::cout << " xx" <<  rotatewheel << "xx " << std::endl;
+	Matrix4x4 front_wheel = cameraManip.apply(ModelViewMatrix);
+
+
+	Matrix4x4 front_wheelmesh = cameraManip.apply(ModelViewMatrix);
+	glUniformMatrix4fv(MVMatrixUniformLocation, 1, false, front_wheel.getPtr());
 	front_wheelMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
 
 
-	ModelViewMatrix.rotate(wheelRads,1,0,0);
+	//-------------------------------------------------------------------back_wheel
+	Matrix4x4 back_wheel = cameraManip.apply(ModelViewMatrix);
+	//back_wheel.translate(0, 0, 0);
+	//back_wheel.rotate((rotatewheel), 1, 0.f, 0.f);
+	//back_wheel.translate(0, 0, 0);
 
-
-	Matrix4x4 o = cameraManip.apply(ModelViewMatrix);
-	glUniformMatrix4fv(
-			MVMatrixUniformLocation,    //Uniform location
-			1,                            //Number of Uniforms
-			false,                        //Transpose Matrix
-			o.getPtr());                //Pointer to Matrix Values
-	//back_wheel Call Draw Geometry Function
+	glUniformMatrix4fv(MVMatrixUniformLocation, 1, false, back_wheel.getPtr());
 	back_wheelMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
 
-
 }
-
 
 void drawTurret ()
 {
@@ -692,17 +774,17 @@ void drawBullet()
 		//Call Draw Geometry Function
 		bulletMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
 
-		bulletOriginx +=sin(bulletDir)*.5;
+		bulletOriginx +=sin(bulletDir)*.4;
 		bulletOriginz +=(cpuScale*cos(bulletAngle)) -(1*((t_global-launchTime)*(t_global-launchTime)));
-		bulletOriginy +=cos(bulletDir)*.5;
+		bulletOriginy +=cos(bulletDir)*.4;
 
 	    //std::cout << bulletDir << "| |" << sin(bulletDir) << "|  bullet  x" << bulletOriginx << "x x" << bulletOriginx  << "x x" << bulletOriginx << "x" << std::endl;
-		std::cout << bulletOriginz << "| |"  << std::endl;
+		//std::cout << bulletOriginz << "| |"  << std::endl;
 		count++;	//when bullet dies
 
 		int collidex(ceil ((bulletOriginx-1)/2)), collidey (ceil((bulletOriginx-1)/2)); //maths to normalise location to map
 
-		if (sqrt((bulletOriginx*bulletOriginx) + (bulletOriginy*bulletOriginy)) > 30 || bulletOriginz < -4 || (bulletOriginz < 1 && map[collidex][collidex] != 0 )) //cancel bullet if too far from origin, way below map, or collides with box
+		if (sqrt((bulletOriginx*bulletOriginx) + (bulletOriginy*bulletOriginy)) > 180 || bulletOriginz < -7 || (bulletOriginz < 1 && map[collidex][collidex] == 1) || (bulletOriginz < 1 && map[collidex][collidex] == 2)) //cancel bullet if too far from origin, way below map, or collides with box
 		{
 			fired = false;
 			count = 0;
@@ -711,4 +793,14 @@ void drawBullet()
 
 	}
 
+}
+
+
+void render2dText(std::string text, float r, float g, float b, float x, float y)
+{
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glColor3f(r,g,b);
+	glRasterPos2f(x, y); // window coordinates
+	for(unsigned int i = 0; i < text.size(); i++)
+		glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, text[i]);
 }

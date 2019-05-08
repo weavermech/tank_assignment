@@ -76,14 +76,14 @@ int map[8][10] = {
 };
 
 //edit humvee
-float transHumx = 0.0, transHumy = 0.0, transHumz = 1.66;
-float scaleHumvee = 0.3;
+float transHumx = 0.0, transHumy = 0.0, transHumz = 1.75;
+float scaleHumvee = 0.09;
 float rotateHumvee = 0.0;
 float radHum;
 float rotateTurret = 0.0;
 float tiltTurret = 0.0;
 float rotatewheel = 0.0;
-float cpuScale = 0.001;
+float cpuScale = 0.07;
 float zoom =0.1;
 
 //bullet
@@ -149,7 +149,7 @@ int main(int argc, char** argv)
 	cameraManip.setFocus(Vector3f(transHumx, transHumz, transHumy));
 
 	//load texture models
-	initTexture("../models/Crate.bmp", crateTexture);
+	initTexture("../models/bp.bmp", crateTexture);
 	initTexture("../models/coin.bmp", coinTexture);
 	initTexture("../models/hamvee.bmp", chassisTexture);
 	initTexture("../models/ball.bmp", bulletTexture);
@@ -599,9 +599,11 @@ void drawTank ()
 		rotateHumvee = 360;
 	}
 
+
 	int fallx(ceil ((transHumx-1)/2)), fally (ceil((transHumy-1)/2)); //maths no normalise location to map
 
-	if (map[fallx][fally] == 0 ) // drop tank if map value is zero
+
+	if (map[fallx][fally] !=1 && map[fallx][fally] !=2) // drop tank if map value is zero
 		transHumz -=1;
 
 	if (transHumz < -30)
@@ -628,29 +630,6 @@ void drawTank ()
 
 	//Call Draw Geometry Function
 	chassisMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
-
-    /*float wheex(cos(rotatewheel));
-    float wheey(sin(rotatewheel));
-	std::cout << " xx" <<  rotatewheel << "xx " << std::endl;
-	Matrix4x4 front_wheel = cameraManip.apply(ModelViewMatrix);
-	front_wheel.translate(0,0, -1);
-	front_wheel.rotate((rotatewheel/10), 1, 0.f, 0.f);
-
-	//front_wheel.translate(0,-wheex,-wheey);
-
-	Matrix4x4 front_wheelmesh = cameraManip.apply(ModelViewMatrix);
-	glUniformMatrix4fv(MVMatrixUniformLocation, 1, false, front_wheel.getPtr());
-	front_wheelMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
-
-	//-------------------------------------------------------------------back_wheel
-	Matrix4x4 back_wheel = cameraManip.apply(ModelViewMatrix);
-	//back_wheel.translate(0, 0, 0);
-	//back_wheel.rotate((rotatewheel), 1, 0.f, 0.f);
-	//back_wheel.translate(0, 0, 0);
-
-	glUniformMatrix4fv(MVMatrixUniformLocation, 1, false, back_wheel.getPtr());
-	back_wheelMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
-*/
 }
 
 void drawwheels()
@@ -669,24 +648,20 @@ void drawwheels()
 			false,						//Transpose Matrix
 			ProjectionMatrix.getPtr());	//Pointer to ModelViewMatrixValues
 
-
-	//float wheex(cos(rotatewheel));
-	//float wheey(sin(rotatewheel));
 	std::cout << " xx" <<  rotatewheel << "xx " << std::endl;
 	Matrix4x4 front_wheel = cameraManip.apply(ModelViewMatrix);
 	front_wheel.translate(0, 0.97, 2.1);
 	front_wheel.rotate((rotatewheel/10), 1, 0.f, 0.f);
 	front_wheel.translate(0, -0.97, -2.1);
 
-	//Matrix4x4 front_wheelmesh = cameraManip.apply(ModelViewMatrix);
+
 	glUniformMatrix4fv(MVMatrixUniformLocation, 1, false, front_wheel.getPtr());
 	front_wheelMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
 
 
-	//-------------------------------------------------------------------back_wheel
 	Matrix4x4 back_wheel = cameraManip.apply(ModelViewMatrix);
 	back_wheel.translate(0, 1.05, -1.28);
-	back_wheel.rotate((rotatewheel/10), 1, 0.f, 0.f);
+	back_wheel.rotate((rotatewheel/3), 1, 0.f, 0.f);
 	back_wheel.translate(0, -1.05, 1.28);
 
 	glUniformMatrix4fv(MVMatrixUniformLocation, 1, false, back_wheel.getPtr());
@@ -720,7 +695,6 @@ ProjectionMatrix.getPtr());	//Pointer to ModelViewMatrixValues
 	rotateTurret = cameraManip.getPan() * 180 / M_PI;
 	tiltTurret = cameraManip.getTilt() * -180 / M_PI;
 
-	//std::cout << rotateTurret << " #" << tiltTurret << "# " << transHumx << " "<< transHumz << " " << transHumy << std::endl;
 	ModelViewMatrix.rotate(rotateTurret,0,1,0);
 
 
@@ -744,8 +718,6 @@ void drawBullet()
 
 	if (fired)
 	{
-
-
 		//Set Colour after program is in use
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, bulletTexture);
@@ -780,16 +752,12 @@ void drawBullet()
 		bulletOriginz +=(cpuScale*cos(bulletAngle)) -(1*((t_global-launchTime)*(t_global-launchTime)));
 		bulletOriginy +=cos(bulletDir)*.4;
 
-	    //std::cout << bulletDir << "| |" << sin(bulletDir) << "|  bullet  x" << bulletOriginx << "x x" << bulletOriginx  << "x x" << bulletOriginx << "x" << std::endl;
-		//std::cout << bulletOriginz << "| |"  << std::endl;
-		count++;	//when bullet dies
 
 		int collidex(ceil ((bulletOriginx-1)/2)), collidey (ceil((bulletOriginx-1)/2)); //maths to normalise location to map
 
 		if (sqrt((bulletOriginx*bulletOriginx) + (bulletOriginy*bulletOriginy)) > 180 || bulletOriginz < -7 || (bulletOriginz < 1 && map[collidex][collidex] == 1) || (bulletOriginz < 1 && map[collidex][collidex] == 2)) //cancel bullet if too far from origin, way below map, or collides with box
 		{
 			fired = false;
-			count = 0;
 		}
 
 

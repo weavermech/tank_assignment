@@ -34,8 +34,27 @@ void render2dText(std::string text, float r, float g, float b, float x, float y)
 //Global Variables
 GLuint shaderProgramID;			                    // Shader Program ID
 GLuint vertexPositionAttribute;		                // Vertex Position Attribute Location
-GLuint vertexTexcoordAttribute; 					// Vertex Texcoord Attribute Location
 
+
+//Material Properties
+GLuint LightPositionUniformLocation;                // Light Position Uniform
+GLuint AmbientUniformLocation;
+GLuint SpecularUniformLocation;
+GLuint SpecularPowerUniformLocation;
+
+Vector3f lightPosition= Vector3f(0,5.0,5.0);   // Light Position
+Vector3f ambient    = Vector3f(0.09,0.09,0.09);
+Vector3f specular   = Vector3f(0.4,0.4,0.4);
+float specularPower = 10.0;
+
+
+
+
+
+
+
+GLuint vertexNormalAttribute;
+GLuint vertexTexcoordAttribute; 					// Vertex Texcoord Attribute Location
 
 
 GLuint TextureMapUniformLocation;					// Texture Map Location
@@ -48,16 +67,7 @@ GLuint bulletTexture;
 float t_global = 0;
 
 
-//Material Properties
-GLuint LightPositionUniformLocation;                // Light Position Uniform
-GLuint AmbientUniformLocation;
-GLuint SpecularUniformLocation;
-GLuint SpecularPowerUniformLocation;
 
-Vector3f lightPosition= Vector3f(20.0,20.0,20.0);   // Light Position
-Vector3f ambient    = Vector3f(0.1,0.1,0.1);
-Vector3f specular   = Vector3f(0.9,0.9,0.9);
-float specularPower = 100.0;
 
 
 //Viewing
@@ -249,16 +259,22 @@ void initShader()
 
 	// Get a handle for our vertex position buffer
 	vertexPositionAttribute = glGetAttribLocation(shaderProgramID, "aVertexPosition");
+	vertexNormalAttribute = glGetAttribLocation(shaderProgramID,    "aVertexNormal");
+	vertexTexcoordAttribute = glGetAttribLocation(shaderProgramID, "aVertexTexcoord");
 
 	//!
 	MVMatrixUniformLocation = glGetUniformLocation(shaderProgramID,     "MVMatrix_uniform");
 	ProjectionUniformLocation = glGetUniformLocation(shaderProgramID,   "ProjMatrix_uniform");
 
+	// !!!!!!
+	LightPositionUniformLocation    = glGetUniformLocation(shaderProgramID, "LightPosition_uniform");
+	AmbientUniformLocation          = glGetUniformLocation(shaderProgramID, "Ambient_uniform");
+	SpecularUniformLocation         = glGetUniformLocation(shaderProgramID, "Specular_uniform");
+	SpecularPowerUniformLocation    = glGetUniformLocation(shaderProgramID, "SpecularPower_uniform");
+
 	//initialise global variables for texture
-	vertexTexcoordAttribute = glGetAttribLocation(shaderProgramID,
-												  "aVertexTexcoord");
-	TextureMapUniformLocation = glGetUniformLocation(shaderProgramID,
-													 "TextureMap_uniform");
+	vertexTexcoordAttribute = glGetAttribLocation(shaderProgramID,"aVertexTexcoord");
+	TextureMapUniformLocation = glGetUniformLocation(shaderProgramID,"TextureMap_uniform");
 
 }
 
@@ -317,10 +333,7 @@ void display(void)
 	ProjectionMatrix.perspective(40, 1.0, 0.0005, 100.0);
 
 
-	glUniform3f(LightPositionUniformLocation, lightPosition.x,lightPosition.y,lightPosition.z);
-	glUniform4f(AmbientUniformLocation, ambient.x, ambient.y, ambient.z, 1.0);
-	glUniform4f(SpecularUniformLocation, specular.x, specular.y, specular.z, 1.0);
-	glUniform1f(SpecularPowerUniformLocation, specularPower);
+
 
 	radHum = (rotateHumvee * M_PI / 180);		//convert bearing to rads
 
@@ -362,12 +375,12 @@ void display(void)
 	drawTurret();
 	drawBullet();
 
-	//float regulate(t_global - floor(t_global));
-	//if( ( regulate < 0.1 && regulate >=0) || (regulate < 0.6 && regulate >=0.5) )
-	//{
-		std::cout << " Bxx " << bulletPosz << std::endl;
-		std::cout << " Cxx " << coinHeight << std::endl;
-	//}
+	glUniform3f(LightPositionUniformLocation, lightPosition.x,lightPosition.y,lightPosition.z);
+	glUniform4f(AmbientUniformLocation, ambient.x, ambient.y, ambient.z, 1.0);
+	glUniform4f(SpecularUniformLocation, specular.x, specular.y, specular.z, 1.0);
+	glUniform1f(SpecularPowerUniformLocation, specularPower);
+
+
 
 	//Unuse Shader
 	glUseProgram(0);
@@ -566,7 +579,7 @@ void drawCrate(float x, float y)
 
 
 	//Call Draw Geometry Function
-	crateMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
+	crateMesh.Draw(vertexPositionAttribute, vertexNormalAttribute, vertexTexcoordAttribute);
 }
 
 void drawCoin(float x, float y)
@@ -604,7 +617,7 @@ void drawCoin(float x, float y)
 
 
 	//Call Draw Geometry Function
-	coinMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
+	coinMesh.Draw(vertexPositionAttribute, vertexNormalAttribute, vertexTexcoordAttribute);
 }
 
 
@@ -632,7 +645,16 @@ void drawTank ()
 	ModelViewMatrix.toIdentity();
 	ModelViewMatrix.translate(transHumx, transHumz, transHumy);
 	ModelViewMatrix.scale(scaleHumvee,scaleHumvee,scaleHumvee);
+
+	ModelViewMatrix.translate(-0.1, 0, 0.35);
+
+
 	ModelViewMatrix.rotate(rotateHumvee,0,1,0);
+
+	ModelViewMatrix.translate(0.1, 0, -0.35);
+
+
+
 	if ( rotateHumvee > 360) 	//restricts compass bearing value 0-360
 	{
 		rotateHumvee = 0;
@@ -676,7 +698,7 @@ void drawTank ()
 
 
 	//Call Draw Geometry Function
-	chassisMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
+	chassisMesh.Draw(vertexPositionAttribute, vertexNormalAttribute, vertexTexcoordAttribute);
 }
 
 void drawwheels()
@@ -703,7 +725,7 @@ void drawwheels()
 
 
 	glUniformMatrix4fv(MVMatrixUniformLocation, 1, false, front_wheel.getPtr());
-	front_wheelMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
+	front_wheelMesh.Draw(vertexPositionAttribute, vertexNormalAttribute, vertexTexcoordAttribute);
 
 
 	Matrix4x4 back_wheel = cameraManip.apply(ModelViewMatrix);
@@ -712,7 +734,7 @@ void drawwheels()
 	back_wheel.translate(0, -1.05, 1.28);
 
 	glUniformMatrix4fv(MVMatrixUniformLocation, 1, false, back_wheel.getPtr());
-	back_wheelMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
+	back_wheelMesh.Draw(vertexPositionAttribute, vertexNormalAttribute, vertexTexcoordAttribute);
 
 }
 
@@ -759,7 +781,7 @@ m.getPtr());                //Pointer to Matrix Values
 	//turret Call Draw Geometry Function
 
 
-turretMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
+turretMesh.Draw(vertexPositionAttribute, vertexNormalAttribute, vertexTexcoordAttribute);
 }
 
 void drawBullet()
@@ -795,7 +817,7 @@ void drawBullet()
 
 
 		//Call Draw Geometry Function
-		bulletMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
+		bulletMesh.Draw(vertexPositionAttribute, vertexNormalAttribute, vertexTexcoordAttribute);
 
 		//move the bullet in the direction fired
 		bulletPosx +=sin(bulletDir)*.4;

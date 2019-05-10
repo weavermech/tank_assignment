@@ -35,6 +35,9 @@ void render2dText(std::string text, float r, float g, float b, float x, float y)
 GLuint shaderProgramID;			                    // Shader Program ID
 GLuint vertexPositionAttribute;		                // Vertex Position Attribute Location
 GLuint vertexTexcoordAttribute; 					// Vertex Texcoord Attribute Location
+
+
+
 GLuint TextureMapUniformLocation;					// Texture Map Location
 GLuint crateTexture;
 GLuint coinTexture;
@@ -43,6 +46,18 @@ GLuint bulletTexture;
 
 
 float t_global = 0;
+
+
+//Material Properties
+GLuint LightPositionUniformLocation;                // Light Position Uniform
+GLuint AmbientUniformLocation;
+GLuint SpecularUniformLocation;
+GLuint SpecularPowerUniformLocation;
+
+Vector3f lightPosition= Vector3f(20.0,20.0,20.0);   // Light Position
+Vector3f ambient    = Vector3f(0.1,0.1,0.1);
+Vector3f specular   = Vector3f(0.9,0.9,0.9);
+float specularPower = 100.0;
 
 
 //Viewing
@@ -69,28 +84,34 @@ int map[8][10] = {
 		{2,2,2,2,0,0,0,1,0,0},		//		|
 		{1,0,0,1,0,0,0,2,0,0},		//		|
 		{1,0,0,1,0,0,0,1,0,1},		//		|
-		{1,2,1,1,0,0,0,1,0,1},		//	   \ /
-		{0,0,0,1,1,1,1,2,0,1},		//		v
-		{0,0,0,1,0,0,0,0,0,1},		//		x
-		{0,0,0,1,1,2,2,2,2,2}
+		{1,2,1,1,0,0,0,1,0,1},		//	    |
+		{0,0,0,1,1,1,1,2,0,1},		//	   \ /
+		{0,0,0,1,0,0,0,0,0,1},		//		v
+		{0,0,0,1,1,2,2,2,2,2}		//		x
 };
+int xtran(0);
+int ytran(0);
+
 
 //edit humvee
-float transHumx = 0.0, transHumy = 0.0, transHumz = 1.75;
-float scaleHumvee = 0.09;
+float transHumx = 2.0, transHumz = 1.92f, transHumy = 2.0;
+float scaleHumvee = 0.18;
 float rotateHumvee = 0.0;
 float radHum;
 float rotateTurret = 0.0;
 float tiltTurret = 0.0;
 float rotatewheel = 0.0;
-float cpuScale = 0.07;
+float cpuScale = 0.12;
 float zoom =0.1;
+
+//coin
+float coinHeight(0);
 
 //bullet
 bool fired = false;
 float firedTime;
 int count;
-float bulletOriginx = 0.0, bulletOriginy = 0.0, bulletOriginz = 0.2;
+float bulletPosx = 0.0, bulletPosz = 0.0, bulletPosy = 0.2;
 float bulletAngle;
 float bulletDir;
 float launchTime;
@@ -145,11 +166,11 @@ int main(int argc, char** argv)
 
 
 	//Init Camera Manipultor
-	cameraManip.setPanTiltRadius(rotateTurret,0.f,2.f);
+	cameraManip.setPanTiltRadius(rotateTurret,5.f,2.f);
 	cameraManip.setFocus(Vector3f(transHumx, transHumz, transHumy));
 
 	//load texture models
-	initTexture("../models/bp.bmp", crateTexture);
+	initTexture("../models/Crate.bmp", crateTexture);
 	initTexture("../models/coin.bmp", coinTexture);
 	initTexture("../models/hamvee.bmp", chassisTexture);
 	initTexture("../models/ball.bmp", bulletTexture);
@@ -274,7 +295,7 @@ void display(void)
 
 
 	//move camera with hummer
-	cameraManip.setFocus(Vector3f(transHumx, transHumz, transHumy));
+	cameraManip.setFocus(Vector3f(transHumx, transHumz+3, transHumy));
 
 
 
@@ -295,25 +316,40 @@ void display(void)
 	//Projection Matrix - Perspective Projection
 	ProjectionMatrix.perspective(40, 1.0, 0.0005, 100.0);
 
+
+	glUniform3f(LightPositionUniformLocation, lightPosition.x,lightPosition.y,lightPosition.z);
+	glUniform4f(AmbientUniformLocation, ambient.x, ambient.y, ambient.z, 1.0);
+	glUniform4f(SpecularUniformLocation, specular.x, specular.y, specular.z, 1.0);
+	glUniform1f(SpecularPowerUniformLocation, specularPower);
+
 	radHum = (rotateHumvee * M_PI / 180);		//convert bearing to rads
 
 
+	coinHeight=(3.6 + 3*cpuScale*cos(t_global/0.5));
 	for (int x(0); x<8;x++)
 	{
-		for (int z(0); z<10;z++)
+		for (int y(0); y<10;y++)
 		{
-			if (map[x][z] == 1)
+			if (map[x][y] == 1)
 			{
-				int xtran(x * 2);
-				int ztran(z * 2);
-				drawCrate(xtran, ztran);
+				xtran=(x * 4);
+				ytran=(y * 4);
+				drawCrate(xtran, ytran);
+				//std::cout << "box at " << xtran << " , " << ytran << std::endl;
 			}
-			else if (map[x][z] == 2)
+			else if (map[x][y] == 2)
 			{
-				int xtran(x * 2);
-				int ztran(z * 2);
-				drawCrate(xtran, ztran);
-				drawCoin(xtran, ztran);
+				xtran=(x * 4);
+				ytran=(y * 4);
+				drawCrate(xtran, ytran);
+				drawCoin(xtran, ytran);
+				//bullet collision check
+				if ( (round(bulletPosx) == xtran+2)  && ( round(bulletPosy) == ytran+2 ) && ( (bulletPosz > (coinHeight-0.8)) && (bulletPosz < (coinHeight+0.8)) ))
+				{
+					map[x][y] = 1;
+					fired = 0;
+
+				}
 
 			}
 
@@ -326,11 +362,18 @@ void display(void)
 	drawTurret();
 	drawBullet();
 
+	//float regulate(t_global - floor(t_global));
+	//if( ( regulate < 0.1 && regulate >=0) || (regulate < 0.6 && regulate >=0.5) )
+	//{
+		std::cout << " Bxx " << bulletPosz << std::endl;
+		std::cout << " Cxx " << coinHeight << std::endl;
+	//}
+
 	//Unuse Shader
 	glUseProgram(0);
     
     //text
-
+/*
     int showinfo = 1; /// to toggle info
     int level = 1;
 	char time[100];
@@ -373,7 +416,7 @@ void display(void)
 
 	//end text
 
-
+*/
 	//Swap Buffers and post redisplay
 	glutSwapBuffers();
 	glutPostRedisplay();
@@ -450,11 +493,13 @@ void mouse(int button, int state, int x, int y)
 		if (!fired)		//prevents fired reset
 		{
 			fired = true;
-			bulletOriginx = transHumx;
-			bulletOriginz = transHumz + 0.2;
-			bulletOriginy = transHumy;
-			bulletAngle = (tiltTurret+0.2) * M_PI / 180;		//convert turret bearing to rads;
-			bulletDir = rotateTurret * M_PI / 180;		//convert turret bearing to rads
+
+			//fine tuning the bullet to appear at from the gun barrel
+			bulletAngle = (tiltTurret+0.5) * M_PI / 180;		//convert turret bearing to rads;
+			bulletDir = rotateTurret * M_PI / 180;				//convert turret bearing to rads
+			bulletPosx = (transHumx-0.02) +sin(bulletDir);
+			bulletPosz = (transHumz + 0.5);
+			bulletPosy = (transHumy+0.07)+cos(bulletDir);
 			launchTime = t_global;
 
 		}
@@ -462,7 +507,6 @@ void mouse(int button, int state, int x, int y)
 
 
 	}
-
 
 }
 
@@ -479,7 +523,6 @@ void motion(int x, int y)
 void Timer(int value)
 {
 	//increment time normalised?
-	//std::cout << " |"<< t_global << "| |" << (9.8*((t_global*launchTime)*(t_global*launchTime))) << std::endl;
 	t_global += 0.01;   //0.1 for cgilab machines?
     //Call function again after 10 milli seconds
 	glutTimerFunc(10,Timer, 0);
@@ -488,7 +531,7 @@ void Timer(int value)
 
 //function to draw the maze
 
-void drawCrate(float x, float z)
+void drawCrate(float x, float y)
 {
 
 	//Set Colour after program is in use
@@ -508,7 +551,8 @@ void drawCrate(float x, float z)
 
 	//Apply Camera Manipluator to Set Model View Matrix on GPU
 	ModelViewMatrix.toIdentity();
-	ModelViewMatrix.translate(x, 0.8, z);
+	ModelViewMatrix.translate(x+2, 0, y+2);
+	ModelViewMatrix.scale(2,2,2);
 
 
 
@@ -525,7 +569,7 @@ void drawCrate(float x, float z)
 	crateMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
 }
 
-void drawCoin(float x, float z)
+void drawCoin(float x, float y)
 {
 
 	//Set Colour after program is in use
@@ -545,8 +589,8 @@ void drawCoin(float x, float z)
 
 	//Apply Camera Manipluator to Set Model View Matrix on GPU
 	ModelViewMatrix.toIdentity();
-	ModelViewMatrix.translate(x, (2.8 + 3*cpuScale*cos(t_global/0.5)), z);
-	ModelViewMatrix.scale(.3,.3, .3);
+	ModelViewMatrix.translate(x+2, coinHeight, y+2);
+	ModelViewMatrix.scale(.6,.6, .6);
 	ModelViewMatrix.rotate(800*cpuScale*t_global,0,1,0);
 
 
@@ -600,7 +644,10 @@ void drawTank ()
 	}
 
 
-	int fallx(ceil ((transHumx-1)/2)), fally (ceil((transHumy-1)/2)); //maths no normalise location to map
+	//int fallx(floor (abs((transHumx-1)/4))), fally (floor(abs((transHumy-1)/4))); //maths no normalise location to map
+	int fallx(floor (transHumx/4)), fally (floor(transHumy/4)); //maths no normalise location to map
+
+
 
 
 	if (map[fallx][fally] !=1 && map[fallx][fally] !=2) // drop tank if map value is zero
@@ -648,7 +695,7 @@ void drawwheels()
 			false,						//Transpose Matrix
 			ProjectionMatrix.getPtr());	//Pointer to ModelViewMatrixValues
 
-	std::cout << " xx" <<  rotatewheel << "xx " << std::endl;
+
 	Matrix4x4 front_wheel = cameraManip.apply(ModelViewMatrix);
 	front_wheel.translate(0, 0.97, 2.1);
 	front_wheel.rotate((rotatewheel/10), 1, 0.f, 0.f);
@@ -695,7 +742,9 @@ ProjectionMatrix.getPtr());	//Pointer to ModelViewMatrixValues
 	rotateTurret = cameraManip.getPan() * 180 / M_PI;
 	tiltTurret = cameraManip.getTilt() * -180 / M_PI;
 
+	ModelViewMatrix.translate(-0.1, 0, 0.35);
 	ModelViewMatrix.rotate(rotateTurret,0,1,0);
+	ModelViewMatrix.translate(0.1, 0, -0.35);
 
 
 Matrix4x4 m = cameraManip.apply(ModelViewMatrix);
@@ -732,7 +781,7 @@ void drawBullet()
 
 		//Apply Camera Manipluator to Set Model View Matrix on GPU
 		ModelViewMatrix.toIdentity();
-		ModelViewMatrix.translate(bulletOriginx,bulletOriginz, bulletOriginy );
+		ModelViewMatrix.translate(bulletPosx,bulletPosz, bulletPosy );
 		ModelViewMatrix.scale(0.03, 0.03, 0.03);
 
 
@@ -748,17 +797,23 @@ void drawBullet()
 		//Call Draw Geometry Function
 		bulletMesh.Draw(vertexPositionAttribute, -1, vertexTexcoordAttribute);
 
-		bulletOriginx +=sin(bulletDir)*.4;
-		bulletOriginz +=(cpuScale*cos(bulletAngle)) -(1*((t_global-launchTime)*(t_global-launchTime)));
-		bulletOriginy +=cos(bulletDir)*.4;
+		//move the bullet in the direction fired
+		bulletPosx +=sin(bulletDir)*.4;
+		bulletPosz +=(cpuScale*cos(bulletAngle)) -(1*((t_global-launchTime)*(t_global-launchTime)));
+		bulletPosy +=cos(bulletDir)*.4;
 
 
-		int collidex(ceil ((bulletOriginx-1)/2)), collidey (ceil((bulletOriginx-1)/2)); //maths to normalise location to map
-
-		if (sqrt((bulletOriginx*bulletOriginx) + (bulletOriginy*bulletOriginy)) > 180 || bulletOriginz < -7 || (bulletOriginz < 1 && map[collidex][collidex] == 1) || (bulletOriginz < 1 && map[collidex][collidex] == 2)) //cancel bullet if too far from origin, way below map, or collides with box
+		int collidex(floor ((bulletPosx)/4)), collidey (floor((bulletPosy)/4)); //maths to normalise location to map
+		// delete bullet if way below map, or collides with box
+		if ( bulletPosz < -7 || (bulletPosz < 1 && map[collidex][collidex] == 1) || (bulletPosz < 1 && map[collidex][collidex] == 2))
 		{
 			fired = false;
 		}
+
+		//coin collision
+
+		//round bullet position to simulate a hit box
+
 
 
 	}

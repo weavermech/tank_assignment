@@ -31,6 +31,12 @@ void drawwheels();
 void drawBox(float x, float y);
 void render2dText(std::string text, float r, float g, float b, float x, float y);
 void reset();
+void skipLevel();
+void Load1();
+void Load2();
+void Load3();
+void Load4();
+
 
 //Global Variables
 GLuint shaderProgramID;			                    // Shader Program ID
@@ -42,10 +48,10 @@ GLuint LightPositionUniformLocation;                // Light Position Uniform
 GLuint AmbientUniformLocation;
 GLuint SpecularUniformLocation;
 GLuint SpecularPowerUniformLocation;
-
+Vector3f lightPosition= Vector3f(0.0,0.1,0.1);   // Light Position
 Vector3f ambient    = Vector3f(0.11,0.11,0.11);
-Vector3f specular   = Vector3f(0.3,0.3,0.3);
-float specularPower = 15.0;
+Vector3f specular   = Vector3f(0.1,0.1,0.1);
+float specularPower = 5.0;
 
 
 
@@ -115,7 +121,6 @@ float rotatewheel = 0.0;
 float cpuScale = 0.12;
 float zoom =0.1;
 bool fall(false);
-float holdCam[3];
 
 //coin
 float coinHeight(0);
@@ -135,6 +140,8 @@ float launchTime;
 
 //all copied score stuff
 //Score
+int level(1);
+
 int s = 0;
 int shoot = 0;
 int shoottime = 0;
@@ -188,7 +195,7 @@ int main(int argc, char** argv)
 	initTexture("../models/coin.bmp", coinTexture);
 	initTexture("../models/hamvee.bmp", chassisTexture);
 	initTexture("../models/ball.bmp", bulletTexture);
-	initTexture("../models/star6a.bmp", boxTexture);
+	initTexture("../models/glass.bmp", boxTexture);
 
 
 
@@ -308,20 +315,13 @@ void initTexture(std::string filename, GLuint & textureID)
 
 
 
-//! Display Loop     **look at 5.3 for lighting
+//! Display Loop
 void display(void)
 {
-
-
-
-	Vector3f lightPosition= Vector3f(-1,15.0,-1);   // Light Position
-
 
 	//move camera with hummer
 	if (!fall)
 		cameraManip.setFocus(Vector3f(transHumx, transHumz+5, transHumy));
-
-
 
 	//Handle keys
     handleKeys();
@@ -401,10 +401,6 @@ void display(void)
 	char time[100];
 	char coins[100];
 	char map[100];
-	int level = 1;
-
-
-
 
 
 	sprintf(map, "Level %i", level);
@@ -418,24 +414,19 @@ void display(void)
 	sprintf(coins, "Coins = %i", coinsCollected);
 	render2dText(coins, 1.0, 1.0, 1.0, -0.76, 0.66);
 
-
-
-
-
-	if (temp ==1) render2dText("Level Completed", 1.0, 1.0, 1.0, 0.0, 0.75);
-
-
 	if (fall)
 	{
 		render2dText("Death Becomes You",1,0,0,-0.05,0);
 		render2dText("Press <ENTER> to restart",1,0,0,-0.07,-0.1);
 	}
 
-	//reset
-	//tanky = 0;
+	if (countdown == 0)
+	{
+		render2dText("TIME'S UP!!",1,0,0,-0.05,0);
+		render2dText("Press <ENTER> to restart",1,0,0,-0.07,-0.1);
+	}
 
 
-	//end text
 
 
 	//Swap Buffers and post redisplay
@@ -458,6 +449,11 @@ void keyboard(unsigned char key, int x, int y)
 	{
 		reset();
 	}
+
+	if (key == 'l')	//enter key code
+	{
+		skipLevel();
+	}
     
     //Set key status
     keyStates[key] = true;
@@ -474,29 +470,33 @@ void keyUp(unsigned char key, int x, int y)
 void handleKeys()
 {
     //keys should be handled here
-	if(keyStates['w'])
-    {
-		transHumx+=cpuScale*sin(radHum);
-		transHumy+=cpuScale*cos(radHum);
-		rotatewheel+=1000*cpuScale;
 
-    }
-
-	if(keyStates['s'])
+    if(!fall)
 	{
-		transHumx-=cpuScale*sin(radHum);
-		transHumy-=cpuScale*cos(radHum);
-		rotatewheel-=1000*cpuScale;
-	}
 
-	if(keyStates['a'])
-	{
-		rotateHumvee+=54*cpuScale;
-	}
+		if (keyStates['w'])
+		{
+			transHumx += cpuScale * sin(radHum);
+			transHumy += cpuScale * cos(radHum);
+			rotatewheel += 1000 * cpuScale;
+		}
 
-	if(keyStates['d'])
-	{
-		rotateHumvee-=40*cpuScale;
+		if (keyStates['s'])
+		{
+			transHumx -= cpuScale * sin(radHum);
+			transHumy -= cpuScale * cos(radHum);
+			rotatewheel -= 1000 * cpuScale;
+		}
+
+		if (keyStates['a'])
+		{
+			rotateHumvee += 54 * cpuScale;
+		}
+
+		if (keyStates['d'])
+		{
+			rotateHumvee -= 40 * cpuScale;
+		}
 	}
 }
 
@@ -675,20 +675,17 @@ void drawTank ()
 
 
 	//int fallx(floor (abs((transHumx-1)/4))), fally (floor(abs((transHumy-1)/4))); //maths no normalise location to map
-	int fallx(floor (transHumx/4)), fally (floor(transHumy/4)); //maths no normalise location to map
+	int fallx(floor (transHumx/4)), fally (floor(transHumy/4)); //maths to normalise location to map
 
-
-
-
-	std::cout << "Tank at " << transHumx << " "<< transHumz << " " << transHumy << "  , " << fall << std::endl;
-
-	if (map[fallx][fally] !=1 && map[fallx][fally] !=2) // drop tank if map value is zero
-		transHumz -=0.5;
-
-	if (transHumz < -5)
+	if ( ( (transHumx < 0) || (transHumy < 0) ) || ( map[fallx][fally] !=1 && map[fallx][fally] !=2) )// drop tank if map value is zero
 	{
-		if (!fall)
-		fall = true;
+		transHumz -= 0.5;
+
+		if (transHumz < 0.5)
+		{
+			if (!fall)
+				fall = true;
+		}
 	}
 
 
@@ -838,6 +835,7 @@ void drawBullet()
 		if ( bulletPosz < -7 || (bulletPosz < 1 && map[collidex][collidey] == 1) || (bulletPosz < 1 && map[collidex][collidey] == 2))
 		{
 			fired = false;
+
 		}
 
 		//coin collision
@@ -874,7 +872,7 @@ void drawBox(float x, float y)
 	if (!fall)
 		ModelViewMatrix.translate(transHumx,transHumz, transHumy);
 
-	ModelViewMatrix.scale(50, 50, 50);
+	ModelViewMatrix.scale(40, 40, 40);
 
 
 
@@ -891,10 +889,7 @@ void drawBox(float x, float y)
 	//Call Draw Geometry Function
 	crateMesh.Draw(vertexPositionAttribute, vertexNormalAttribute, vertexTexcoordAttribute);
 
-	ModelViewMatrix.translate(0,-60, 0);
 
-	//Call Draw Geometry Function
-	crateMesh.Draw(vertexPositionAttribute, vertexNormalAttribute, vertexTexcoordAttribute);
 }
 
 void render2dText(std::string text, float r, float g, float b, float x, float y)
@@ -911,4 +906,121 @@ void reset(){
 	transHumy = 2;
 	transHumz = 2;
 	fall = false;
+	coinsCollected = 0;
+	t_global=0;
+	countdown = int(20 + coinsCollected - t_global);
+	bulletPosx = 0;
+	bulletPosz = 0;
+	bulletPosy = 0;
+	if (level == 1)
+	{
+		Load1();
+	}
+	else if (level == 2)
+	{
+		Load2();
+	}
+	else if (level == 3)
+	{
+		Load3();
+	}
+
+	else if (level == 4)
+	{
+		Load4();
+	}
+}
+
+
+void skipLevel()
+{
+	if (level == 1)
+	{
+		level = 2;
+		Load2();
+	}
+	else if (level == 2)
+	{
+		level = 3;
+		Load3();
+	}
+	else if (level == 3)
+	{
+		level = 4;
+		Load4();
+	}
+
+	else if (level == 4)
+	{
+		level = 1;
+		Load1();
+	}
+
+	reset();
+
+}
+
+void Load1() //top left must be a '1' for start position
+{
+	int map1[8][10] = {
+			{1,0,0,0,0,0,0,1,1,1},    	//	   z⦿ --------> y
+			{2,2,2,2,0,0,0,1,0,0},		//		|
+			{1,0,0,1,0,0,0,2,0,0},		//		|
+			{1,0,0,1,0,0,0,1,0,1},		//		|
+			{1,2,1,1,0,0,0,1,0,1},		//	    |
+			{0,0,0,1,1,1,1,2,0,1},		//	   \ /
+			{0,0,0,1,0,0,0,0,0,1},		//		v
+			{0,0,0,1,1,2,2,2,2,2}		//		x
+	};
+	std::copy(&map1[0][0], &map1[7][9],&map[0][0]);
+
+}
+
+
+void Load2() //top left must be a '1' for start position
+{
+	int map2[8][10] = {
+			{1,0,0,0,0,0,0,0,0,0},    	//	   z⦿ --------> y
+			{1,0,1,2,1,2,1,2,1,2},		//		|
+			{2,0,2,0,0,0,0,0,0,1},		//		|
+			{1,0,2,0,1,2,1,2,0,2},		//		|
+			{2,0,2,0,0,0,0,1,0,1},		//	    |
+			{1,0,1,2,1,2,1,2,0,2},		//	   \ /
+			{1,0,0,0,0,0,0,0,0,1},		//		v
+			{2,1,2,1,2,1,2,1,2,1}		//		x
+	};
+	std::copy(&map2[0][0], &map2[7][9],&map[0][0]);
+
+}
+
+void Load3() //top left must be a '1' for start position
+{
+	int map3[8][10] = {
+			{1,1,0,1,2,1,0,1,2,1},    	//	   z⦿ --------> y
+			{0,2,1,2,0,2,1,2,0,2},		//		|
+			{0,0,0,0,0,0,0,0,2,1},		//		|
+			{0,1,2,1,0,2,0,2,1,0},		//		|
+			{1,2,0,2,1,2,0,1,0,0},		//	    |
+			{2,0,0,0,0,0,0,2,1,2},		//	   \ /
+			{1,2,1,0,1,2,1,0,0,1},		//		v
+			{0,0,2,1,2,0,1,2,1,2}		//		x
+	};
+	std::copy(&map3[0][0], &map3[7][9],&map[0][0]);
+
+}
+
+void Load4() //top left must be a '1' for start position
+{
+	int map4[8][10] = {
+			{2,2,2,2,2,2,2,2,2,2},    	//	   z⦿ --------> y
+			{2,0,0,0,2,2,0,0,0,2},		//		|
+			{2,0,0,0,2,2,0,0,0,2},		//		|
+			{2,2,2,2,2,2,2,2,2,2},		//		|
+			{2,2,2,2,2,2,2,2,2,2},		//	    |
+			{2,0,0,0,2,2,0,0,0,2},		//	   \ /
+			{2,0,0,0,2,2,0,0,0,2},		//		v
+			{2,2,2,2,2,2,2,2,2,2},		//		x
+	};
+	std::copy(&map4[0][0], &map4[7][9],&map[0][0]);
+
 }

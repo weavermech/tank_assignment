@@ -28,8 +28,9 @@ void drawTank();
 void drawTurret ();
 void drawBullet ();
 void drawwheels();
+void drawBox(float x, float y);
 void render2dText(std::string text, float r, float g, float b, float x, float y);
-
+void reset();
 
 //Global Variables
 GLuint shaderProgramID;			                    // Shader Program ID
@@ -42,10 +43,9 @@ GLuint AmbientUniformLocation;
 GLuint SpecularUniformLocation;
 GLuint SpecularPowerUniformLocation;
 
-Vector3f lightPosition= Vector3f(0,5.0,5.0);   // Light Position
-Vector3f ambient    = Vector3f(0.09,0.09,0.09);
-Vector3f specular   = Vector3f(0.4,0.4,0.4);
-float specularPower = 10.0;
+Vector3f ambient    = Vector3f(0.11,0.11,0.11);
+Vector3f specular   = Vector3f(0.3,0.3,0.3);
+float specularPower = 15.0;
 
 
 
@@ -62,6 +62,7 @@ GLuint crateTexture;
 GLuint coinTexture;
 GLuint chassisTexture;
 GLuint bulletTexture;
+GLuint boxTexture;
 
 
 float t_global = 0;
@@ -113,9 +114,12 @@ float tiltTurret = 0.0;
 float rotatewheel = 0.0;
 float cpuScale = 0.12;
 float zoom =0.1;
+bool fall(false);
+float holdCam[3];
 
 //coin
 float coinHeight(0);
+int coinsCollected(0);
 
 //bullet
 bool fired = false;
@@ -176,7 +180,7 @@ int main(int argc, char** argv)
 
 
 	//Init Camera Manipultor
-	cameraManip.setPanTiltRadius(rotateTurret,5.f,2.f);
+	cameraManip.setPanTiltRadius(rotateTurret,1.f,1.f);
 	cameraManip.setFocus(Vector3f(transHumx, transHumz, transHumy));
 
 	//load texture models
@@ -184,6 +188,7 @@ int main(int argc, char** argv)
 	initTexture("../models/coin.bmp", coinTexture);
 	initTexture("../models/hamvee.bmp", chassisTexture);
 	initTexture("../models/ball.bmp", bulletTexture);
+	initTexture("../models/star6a.bmp", boxTexture);
 
 
 
@@ -242,7 +247,7 @@ bool initGL(int argc, char** argv)
 	glutMotionFunc(motion);
 
 	// depth testing for OpenGL
-	glEnable(GL_TEXTURE_2D);
+	//glEnable(GL_TEXTURE_2D);
 	glEnable(GL_DEPTH_TEST);
 
     //Start start timer function after 100 milliseconds
@@ -309,9 +314,12 @@ void display(void)
 
 
 
+	Vector3f lightPosition= Vector3f(-1,15.0,-1);   // Light Position
+
 
 	//move camera with hummer
-	cameraManip.setFocus(Vector3f(transHumx, transHumz+3, transHumy));
+	if (!fall)
+		cameraManip.setFocus(Vector3f(transHumx, transHumz+5, transHumy));
 
 
 
@@ -348,7 +356,6 @@ void display(void)
 				xtran=(x * 4);
 				ytran=(y * 4);
 				drawCrate(xtran, ytran);
-				//std::cout << "box at " << xtran << " , " << ytran << std::endl;
 			}
 			else if (map[x][y] == 2)
 			{
@@ -361,6 +368,7 @@ void display(void)
 				{
 					map[x][y] = 1;
 					fired = 0;
+					coinsCollected ++;
 
 				}
 
@@ -374,10 +382,12 @@ void display(void)
 	drawwheels();
 	drawTurret();
 	drawBullet();
+	drawBox(5,4);
+
 
 	glUniform3f(LightPositionUniformLocation, lightPosition.x,lightPosition.y,lightPosition.z);
-	glUniform4f(AmbientUniformLocation, ambient.x, ambient.y, ambient.z, 1.0);
-	glUniform4f(SpecularUniformLocation, specular.x, specular.y, specular.z, 1.0);
+	glUniform4f(AmbientUniformLocation, ambient.x, ambient.y, ambient.z, vertexNormalAttribute);
+	glUniform4f(SpecularUniformLocation, specular.x, specular.y, specular.z, vertexNormalAttribute);
 	glUniform1f(SpecularPowerUniformLocation, specularPower);
 
 
@@ -386,42 +396,40 @@ void display(void)
 	glUseProgram(0);
     
     //text
-/*
-    int showinfo = 1; /// to toggle info
-    int level = 1;
+
+
 	char time[100];
-	char score[100];
-	char coinleft[100];
-	char levelnow[100];
+	char coins[100];
+	char map[100];
+	int level = 1;
 
-	if (showinfo == 1)
-	{
-		render2dText("Manually Level Select(1-6)", 1.0, 1.0, 1.0, -1.0, -0.70);
-		render2dText("Tank Move(WSAD)", 1.0, 1.0, 1.0, -1.0, -0.75);
-		render2dText("turret Rotate(JK) Reset(L) Lock(^L)", 1.0, 1.0, 1.0, -1.0, -0.80);
-		render2dText("Change View (V)", 1.0, 1.0, 1.0, -1.0, -0.85);
-		render2dText("Manual View On(E) Reset(^E)", 1.0, 1.0, 1.0, -1.0, -0.90);
-		render2dText("Mesh View On(Q) Reset(^Q)", 1.0, 1.0, 1.0, -1.0, -0.95);
-		render2dText("Zoom In(=) Out(-)", 1.0, 1.0, 1.0, -1.0, -1.00);
-	}
 
-	sprintf(levelnow, "Level %i", level);
-	render2dText(levelnow, 1.0, 1.0, 1.0, -1.0, 0.95);
 
-	countdown = int(40 - t_global);
+
+
+	sprintf(map, "Level %i", level);
+	render2dText(map, 0.9, 0.9, 0.9, -.99, 0.66);
+
+	countdown = int(20 + coinsCollected - t_global);
+
 	sprintf(time, "Time = %i", countdown);
-	render2dText(time, 1.0, 1.0, 1.0, -1.0, 0.90);
+	render2dText(time, 0.9, 0.9, 0.9, -.87, 0.66);
 
-	sprintf(score, "Total Score = %i", totalscore);
-	render2dText(score, 1.0, 1.0, 1.0, -1.0, 0.85);
+	sprintf(coins, "Coins = %i", coinsCollected);
+	render2dText(coins, 1.0, 1.0, 1.0, -0.76, 0.66);
 
-	sprintf(coinleft, "Coin(s) Left = %i/%i", count, (count + s));
-	render2dText(coinleft, 1.0, 1.0, 1.0, -1.0, 0.80);
 
-	render2dText("Info Open(I) Close(O)", 1.0, 1.0, 1.0, -1.0, 0.75);
+
+
 
 	if (temp ==1) render2dText("Level Completed", 1.0, 1.0, 1.0, 0.0, 0.75);
-	if (temp ==2) render2dText("Game Over", 1.0, 1.0, 1.0, 0.0, 0.70);
+
+
+	if (fall)
+	{
+		render2dText("Death Becomes You",1,0,0,-0.05,0);
+		render2dText("Press <ENTER> to restart",1,0,0,-0.07,-0.1);
+	}
 
 	//reset
 	//tanky = 0;
@@ -429,7 +437,7 @@ void display(void)
 
 	//end text
 
-*/
+
 	//Swap Buffers and post redisplay
 	glutSwapBuffers();
 	glutPostRedisplay();
@@ -446,10 +454,10 @@ void keyboard(unsigned char key, int x, int y)
 		exit(0);
 	}
 
-	//translate hummer
-	/*if (key == 'w')
+	if (key == 13)	//esc key code
 	{
-	}*/
+		reset();
+	}
     
     //Set key status
     keyStates[key] = true;
@@ -483,12 +491,12 @@ void handleKeys()
 
 	if(keyStates['a'])
 	{
-		rotateHumvee+=50*cpuScale;
+		rotateHumvee+=54*cpuScale;
 	}
 
 	if(keyStates['d'])
 	{
-		rotateHumvee-=50*cpuScale;
+		rotateHumvee-=40*cpuScale;
 	}
 }
 
@@ -672,17 +680,17 @@ void drawTank ()
 
 
 
+	std::cout << "Tank at " << transHumx << " "<< transHumz << " " << transHumy << "  , " << fall << std::endl;
+
 	if (map[fallx][fally] !=1 && map[fallx][fally] !=2) // drop tank if map value is zero
-		transHumz -=1;
+		transHumz -=0.5;
 
-	if (transHumz < -30)
+	if (transHumz < -5)
 	{
-
-		for (int inf(1); inf < 2; inf--)
-		{
-			std::cout << " END " << std::endl;
-		}
+		if (!fall)
+		fall = true;
 	}
+
 
 
 
@@ -720,7 +728,7 @@ void drawwheels()
 
 	Matrix4x4 front_wheel = cameraManip.apply(ModelViewMatrix);
 	front_wheel.translate(0, 0.97, 2.1);
-	front_wheel.rotate((rotatewheel/10), 1, 0.f, 0.f);
+	front_wheel.rotate((rotatewheel/3), 1, 0.f, 0.f);
 	front_wheel.translate(0, -0.97, -2.1);
 
 
@@ -804,7 +812,7 @@ void drawBullet()
 		//Apply Camera Manipluator to Set Model View Matrix on GPU
 		ModelViewMatrix.toIdentity();
 		ModelViewMatrix.translate(bulletPosx,bulletPosz, bulletPosy );
-		ModelViewMatrix.scale(0.03, 0.03, 0.03);
+		ModelViewMatrix.scale(0.05, 0.05, 0.05);
 
 
 		Matrix4x4 m = cameraManip.apply(ModelViewMatrix);
@@ -827,7 +835,7 @@ void drawBullet()
 
 		int collidex(floor ((bulletPosx)/4)), collidey (floor((bulletPosy)/4)); //maths to normalise location to map
 		// delete bullet if way below map, or collides with box
-		if ( bulletPosz < -7 || (bulletPosz < 1 && map[collidex][collidex] == 1) || (bulletPosz < 1 && map[collidex][collidex] == 2))
+		if ( bulletPosz < -7 || (bulletPosz < 1 && map[collidex][collidey] == 1) || (bulletPosz < 1 && map[collidex][collidey] == 2))
 		{
 			fired = false;
 		}
@@ -843,6 +851,52 @@ void drawBullet()
 }
 
 
+void drawBox(float x, float y)
+{
+
+	//Set Colour after program is in use
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, boxTexture);
+	glUniform1i(TextureMapUniformLocation, 0);
+
+
+
+	//Set Projection Matrix
+	glUniformMatrix4fv(
+			ProjectionUniformLocation,  //Uniform location
+			1,							//Number of Uniforms
+			false,						//Transpose Matrix
+			ProjectionMatrix.getPtr());	//Pointer to ModelViewMatrixValues
+
+
+	//Apply Camera Manipluator to Set Model View Matrix on GPU
+	ModelViewMatrix.toIdentity();
+	if (!fall)
+		ModelViewMatrix.translate(transHumx,transHumz, transHumy);
+
+	ModelViewMatrix.scale(50, 50, 50);
+
+
+
+	Matrix4x4 m = cameraManip.apply(ModelViewMatrix);
+	glUniformMatrix4fv(
+			MVMatrixUniformLocation,    //Uniform location
+			1,                            //Number of Uniforms
+			false,                        //Transpose Matrix
+			m.getPtr());                //Pointer to Matrix Values
+
+
+
+
+	//Call Draw Geometry Function
+	crateMesh.Draw(vertexPositionAttribute, vertexNormalAttribute, vertexTexcoordAttribute);
+
+	ModelViewMatrix.translate(0,-60, 0);
+
+	//Call Draw Geometry Function
+	crateMesh.Draw(vertexPositionAttribute, vertexNormalAttribute, vertexTexcoordAttribute);
+}
+
 void render2dText(std::string text, float r, float g, float b, float x, float y)
 {
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -850,4 +904,11 @@ void render2dText(std::string text, float r, float g, float b, float x, float y)
 	glRasterPos2f(x, y); // window coordinates
 	for(unsigned int i = 0; i < text.size(); i++)
 		glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, text[i]);
+}
+
+void reset(){
+	transHumx = 2;
+	transHumy = 2;
+	transHumz = 2;
+	fall = false;
 }

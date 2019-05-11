@@ -15,7 +15,7 @@ add_executable(tank_assignment
         ../common/Matrix.cpp
         ../common/Mesh.cpp
         ../common/SphericalCameraManipulator.cpp
-        ../common/Texture.cpp bullet.cpp bullet.h)
+        ../common/Texture.cpp)
 
 
 find_package(OpenGL REQUIRED)

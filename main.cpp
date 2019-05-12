@@ -148,6 +148,8 @@ int level(1);
 int countdown = 2;
 int levelTxt (0);
 
+float cameraz(0);
+
 
 
 
@@ -520,7 +522,7 @@ void handleKeys()
 {
     //keys should be handled here
 
-    if(countdown != 0)
+    if(!fall && countdown != 0)
 	{
 
 		if (keyStates['w'])
@@ -564,7 +566,7 @@ void handleKeys()
 			rVelo = 0;
 
 
-		std::cout << lVelo << " ---> " << rVelo << std::endl;
+		std::cout << fall << std::endl;
 
 
 
@@ -746,13 +748,24 @@ void drawTank ()
 
 	int fallx(floor (transHumx/4)), fally (floor(transHumy/4)); //maths to normalise location to map
 
-	if ( ( (transHumx < 0) || (transHumy < 0) ) || ( map[fallx][fally] !=1 && map[fallx][fally] !=2) )// drop tank if map value is zero
+	if ( ( (transHumx < 0) || (transHumy < 0) ) || ( map[fallx][fally] !=1 && map[fallx][fally] !=2) || transHumz < 0.5)// drop tank if map value is zero
 	{
 		vVelo = -0.01;
 		vDecel();
 		transHumz += vVelo * 5;
-		if (transHumz < -3)
+		if (transHumz < -7)
+		{
 			fall = true;
+			cameraManip.setFocus(Vector3f(transHumx , transHumz +5 + cameraz, transHumy));
+				cameraz +=0.30;
+		}
+		if (transHumz < -18 && cameraz < 80)
+		{
+			fall = true;
+			cameraManip.setFocus(Vector3f(transHumx , transHumz +5 + cameraz, transHumy));
+			cameraz +=0.31;
+		}
+
 
 
 		if (lVelo >0)
@@ -871,6 +884,7 @@ ProjectionMatrix.getPtr());	//Pointer to ModelViewMatrixValues
 
 	if (bspinState || fspinState) // spin forwards (do back later)
 	{
+
 		ModelViewMatrix.rotate((3 * spin), 1, 1, 1);
 	}
 
@@ -1015,7 +1029,7 @@ void reset(){
 	transHumz = 2;
 	coinsCollected = 0;
 	countdown = int(20 + coinsCollected - t_global);
-	t_global = bulletPosx = bulletPosz = bulletPosy = lVelo = rVelo = 0;
+	t_global = bulletPosx = bulletPosz = bulletPosy = lVelo = rVelo = cameraz = 0;
 	if (level == 1)
 	{
 		Load1();

@@ -39,6 +39,7 @@ void Load4();
 void lAccel();
 void lDecel();
 void rAccel();
+void vDecel();
 
 
 
@@ -125,6 +126,10 @@ bool fall(false);
 //physics
 float lVelo(0);
 float rVelo(0);
+float vVelo(0);
+int spin(0);
+bool fspinState;
+bool bspinState;
 
 //coin
 float coinHeight(0);
@@ -515,7 +520,7 @@ void handleKeys()
 {
     //keys should be handled here
 
-    if(!fall && countdown != 0)
+    if(countdown != 0)
 	{
 
 		if (keyStates['w'])
@@ -698,7 +703,6 @@ void drawCoin(float x, float y)
 void drawTank ()
 {
 
-	//chassis
 
 	//Set Colour after program is in use
 	glActiveTexture(GL_TEXTURE0);
@@ -740,20 +744,41 @@ void drawTank ()
 	}
 
 
-	//int fallx(floor (abs((transHumx-1)/4))), fally (floor(abs((transHumy-1)/4))); //maths no normalise location to map
 	int fallx(floor (transHumx/4)), fally (floor(transHumy/4)); //maths to normalise location to map
 
 	if ( ( (transHumx < 0) || (transHumy < 0) ) || ( map[fallx][fally] !=1 && map[fallx][fally] !=2) )// drop tank if map value is zero
 	{
-		lVelo = -0.01;
-		lDecel();
-		transHumz += lVelo * 5;
+		vVelo = -0.01;
+		vDecel();
+		transHumz += vVelo * 5;
+		if (transHumz < -3)
+			fall = true;
 
-		if (transHumz < 0.5)
+
+		if (lVelo >0)
+			fspinState = true;
+		if (lVelo < 0)
+			bspinState = true;
+
+		if (fspinState) // spin forwards (do back later)
 		{
-			if (!fall)
-				fall = true;
+			spin++;
 		}
+
+
+		if (bspinState) // spin forwards (do back later)
+		{
+			spin--;
+		}
+
+		ModelViewMatrix.translate(0, 1, 0);
+		ModelViewMatrix.rotate((3 * spin), 1, 0, 0);
+		ModelViewMatrix.translate(0, -1, 0);
+
+
+
+
+
 	}
 
 
@@ -842,6 +867,14 @@ ProjectionMatrix.getPtr());	//Pointer to ModelViewMatrixValues
 	ModelViewMatrix.translate(0.1, 0, -0.35);
 
 
+
+
+	if (bspinState || fspinState) // spin forwards (do back later)
+	{
+		ModelViewMatrix.rotate((3 * spin), 1, 1, 1);
+	}
+
+
 Matrix4x4 m = cameraManip.apply(ModelViewMatrix);
 glUniformMatrix4fv(
 MVMatrixUniformLocation,    //Uniform location
@@ -852,6 +885,8 @@ m.getPtr());                //Pointer to Matrix Values
 
 
 	//turret Call Draw Geometry Function
+
+
 
 
 turretMesh.Draw(vertexPositionAttribute, vertexNormalAttribute, vertexTexcoordAttribute);
@@ -906,9 +941,7 @@ void drawBullet()
 
 		}
 
-		//coin collision
 
-		//round bullet position to simulate a hit box
 
 
 
@@ -980,13 +1013,9 @@ void reset(){
 	transHumx = 2;
 	transHumy = 2;
 	transHumz = 2;
-	fall = false;
 	coinsCollected = 0;
-	t_global=0;
 	countdown = int(20 + coinsCollected - t_global);
-	bulletPosx = 0;
-	bulletPosz = 0;
-	bulletPosy = 0;
+	t_global = bulletPosx = bulletPosz = bulletPosy = lVelo = rVelo = 0;
 	if (level == 1)
 	{
 		Load1();
@@ -1005,8 +1034,8 @@ void reset(){
 		Load4();
 	}
 
-	lVelo = 0;
-	rVelo = 0;
+
+	fall = fspinState = bspinState = false;
 }
 
 
@@ -1106,15 +1135,15 @@ void Load4() //top left must be a '1' for start position
 
 void lAccel() //linear acceleration
 {
-	lVelo += 0.05;
+	lVelo += 0.04;
 	if (lVelo >=1)
 		lVelo=1;
 
 }
 
-void lDecel()
+void lDecel() // linear decel
 {
-	lVelo -= 0.05;
+	lVelo -= 0.04;
 	if (lVelo <= -1)
 		lVelo = -1;
 }
@@ -1127,3 +1156,9 @@ void rAccel() // rotational acceleration
 
 }
 
+void vDecel() //vertical decelleration
+{
+	vVelo -= 0.05;
+	if (lVelo <= -2)
+		lVelo = -2;
+}

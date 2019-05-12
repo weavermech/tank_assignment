@@ -390,10 +390,13 @@ void display(void)
 	drawBullet();
 
 	//friction
-	if (lVelo > 0)
-		lVelo -= 0.02;
-	if (lVelo < 0)
-		lVelo += 0.02;
+	if (lVelo > 0.01 && lVelo <= 1)
+		lVelo -= 0.01;
+	else if (lVelo < -0.01 && lVelo >= -1)
+		lVelo += 0.01;
+	else
+		lVelo = 0;
+
 
 	transHumx += (lVelo * cpuScale * sin(radHum));
 	transHumy += (lVelo *cpuScale * cos(radHum));
@@ -458,6 +461,7 @@ void display(void)
 	{
 		render2dText("Death Becomes You",1,0,0,-0.1,0);
 		render2dText("Press <ENTER> to restart",1,0,0,-0.12,-0.1);
+		lVelo = 0;
 	}
 
 	if (countdown == 0)
@@ -741,7 +745,9 @@ void drawTank ()
 
 	if ( ( (transHumx < 0) || (transHumy < 0) ) || ( map[fallx][fally] !=1 && map[fallx][fally] !=2) )// drop tank if map value is zero
 	{
-		transHumz -= 0.5;
+		lVelo = -0.01;
+		lDecel();
+		transHumz += lVelo * 5;
 
 		if (transHumz < 0.5)
 		{

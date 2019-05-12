@@ -36,6 +36,10 @@ void Load1();
 void Load2();
 void Load3();
 void Load4();
+void lAccel();
+void lDecel();
+void rAccel();
+
 
 
 //Global Variables
@@ -117,6 +121,10 @@ float tiltTurret = 0.0;
 float rotatewheel = 0.0;
 float cpuScale = 0.12;
 bool fall(false);
+
+//physics
+float lVelo(0);
+float rVelo(0);
 
 //coin
 float coinHeight(0);
@@ -381,11 +389,22 @@ void display(void)
 	drawTurret();
 	drawBullet();
 
+	//friction
+	if (lVelo > 0)
+		lVelo -= 0.02;
+	if (lVelo < 0)
+		lVelo += 0.02;
+
+	transHumx += (lVelo * cpuScale * sin(radHum));
+	transHumy += (lVelo *cpuScale * cos(radHum));
+	rotatewheel += lVelo * 1000 * cpuScale;
+
+
 
 
 
 	//Skybox
-	int d(79.99999999999);
+	float d (79.5);
 	drawBox(frontTexture, d,0,0,0);
 	//no roof
 	drawBox(rightTexture, 0,0,d,0);
@@ -415,7 +434,7 @@ void display(void)
 	sprintf(map, "Level %i", level);
 	render2dText(map, 0.9, 0.9, 0.9, -.99, 0.66);
 
-	if (countdown !=0)
+	if ((countdown !=0) && (!fall))
 		countdown = int(20 + coinsCollected - t_global);
 
 	sprintf(time, "Time = %i", countdown);
@@ -424,7 +443,6 @@ void display(void)
 	sprintf(coins, "Coins Collected = %i Coins Left = %i", coinsCollected,coinsLeft);
 	render2dText(coins, 1.0, 1.0, 1.0, -0.76, 0.66);
 
-	std::cout << (t_global - time_diff) << std::endl;
 	if (coinsLeft == 0)
 	{
 		skipLevel();
@@ -438,8 +456,8 @@ void display(void)
 
 	if (fall)
 	{
-		render2dText("Death Becomes You",1,0,0,-0.05,0);
-		render2dText("Press <ENTER> to restart",1,0,0,-0.07,-0.1);
+		render2dText("Death Becomes You",1,0,0,-0.1,0);
+		render2dText("Press <ENTER> to restart",1,0,0,-0.12,-0.1);
 	}
 
 	if (countdown == 0)
@@ -498,27 +516,49 @@ void handleKeys()
 
 		if (keyStates['w'])
 		{
-			transHumx += cpuScale * sin(radHum);
-			transHumy += cpuScale * cos(radHum);
-			rotatewheel += 1000 * cpuScale;
+			lAccel();
+			/*transHumx += (lVelo * cpuScale * sin(radHum));
+			transHumy += (lVelo *cpuScale * cos(radHum));
+			rotatewheel += lVelo * 1000 * cpuScale;*/
 		}
 
 		if (keyStates['s'])
 		{
-			transHumx -= cpuScale * sin(radHum);
-			transHumy -= cpuScale * cos(radHum);
-			rotatewheel -= 1000 * cpuScale;
+			lDecel();
+			/*transHumx += (lVelo * cpuScale * sin(radHum));
+			transHumy += (lVelo * cpuScale * cos(radHum));
+			rotatewheel -= lVelo * 1000 * cpuScale;*/
 		}
 
 		if (keyStates['a'])
 		{
-			rotateHumvee += 54 * cpuScale;
+			rotateHumvee += (rVelo * 54 * cpuScale);
 		}
 
 		if (keyStates['d'])
 		{
-			rotateHumvee -= 40 * cpuScale;
+			rotateHumvee -= (rVelo * 54 * cpuScale);
 		}
+
+		/*if (keyStates['w'] || keyStates['s'])
+
+
+		if (! (keyStates['w'] || keyStates['s'] ) )
+		{
+			lDecel();
+		}*/
+
+		if  (keyStates['a'] || keyStates['d'])
+			rAccel();
+
+		if (! (keyStates['a'] || keyStates['d']) )
+			rVelo = 0;
+
+
+		std::cout << lVelo << " ---> " << rVelo << std::endl;
+
+
+
 	}
 }
 
@@ -958,6 +998,9 @@ void reset(){
 	{
 		Load4();
 	}
+
+	lVelo = 0;
+	rVelo = 0;
 }
 
 
@@ -1054,3 +1097,27 @@ void Load4() //top left must be a '1' for start position
 	std::copy(&map4[0][0], &map4[7][10],&map[0][0]);
 
 }
+
+void lAccel() //linear acceleration
+{
+	lVelo += 0.05;
+	if (lVelo >=1)
+		lVelo=1;
+
+}
+
+void lDecel()
+{
+	lVelo -= 0.05;
+	if (lVelo <= -1)
+		lVelo = -1;
+}
+
+void rAccel() // rotational acceleration
+{
+	rVelo += 0.03;
+	if (rVelo >1)
+		rVelo=1;
+
+}
+

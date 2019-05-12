@@ -28,7 +28,7 @@ void drawTank();
 void drawTurret ();
 void drawBullet ();
 void drawwheels();
-void drawBox(float x, float y);
+void drawBox(GLuint str, float x, float z, float y, float r);
 void render2dText(std::string text, float r, float g, float b, float x, float y);
 void reset();
 void skipLevel();
@@ -48,10 +48,10 @@ GLuint LightPositionUniformLocation;                // Light Position Uniform
 GLuint AmbientUniformLocation;
 GLuint SpecularUniformLocation;
 GLuint SpecularPowerUniformLocation;
-Vector3f lightPosition= Vector3f(0.0,0.1,0.1);   // Light Position
-Vector3f ambient    = Vector3f(0.11,0.11,0.11);
+Vector3f lightPosition= Vector3f(0.0,0.1,1.1);   // Light Position
+Vector3f ambient    = Vector3f(0.01,0.01,0.01);
 Vector3f specular   = Vector3f(0.1,0.1,0.1);
-float specularPower = 5.0;
+float specularPower = 10.0;
 
 
 
@@ -69,9 +69,15 @@ GLuint coinTexture;
 GLuint chassisTexture;
 GLuint bulletTexture;
 GLuint boxTexture;
-
+GLuint frontTexture;
+GLuint backTexture;
+GLuint leftTexture;
+GLuint rightTexture;
+GLuint bottomTexture;
+GLuint deathTexture;
 
 float t_global = 0;
+float time_diff(-1.1);
 
 
 
@@ -96,16 +102,7 @@ Mesh turretMesh;
 Mesh bulletMesh;
 
 //map - can load this from file later !!top left must be a '1' for start position
-int map[8][10] = {
-		{1,0,0,0,0,0,0,1,1,1},    	//	   z⦿ --------> y
-		{2,2,2,2,0,0,0,1,0,0},		//		|
-		{1,0,0,1,0,0,0,2,0,0},		//		|
-		{1,0,0,1,0,0,0,1,0,1},		//		|
-		{1,2,1,1,0,0,0,1,0,1},		//	    |
-		{0,0,0,1,1,1,1,2,0,1},		//	   \ /
-		{0,0,0,1,0,0,0,0,0,1},		//		v
-		{0,0,0,1,1,2,2,2,2,2}		//		x
-};
+int map[8][10];
 int xtran(0);
 int ytran(0);
 
@@ -119,37 +116,26 @@ float rotateTurret = 0.0;
 float tiltTurret = 0.0;
 float rotatewheel = 0.0;
 float cpuScale = 0.12;
-float zoom =0.1;
 bool fall(false);
 
 //coin
 float coinHeight(0);
 int coinsCollected(0);
+int coinsLeft(0);
 
 //bullet
 bool fired = false;
-float firedTime;
-int count;
 float bulletPosx = 0.0, bulletPosz = 0.0, bulletPosy = 0.2;
 float bulletAngle;
 float bulletDir;
 float launchTime;
 
-
-
-
-//all copied score stuff
-//Score
+//HUD
 int level(1);
+int countdown = 2;
+int levelTxt (0);
 
-int s = 0;
-int shoot = 0;
-int shoottime = 0;
-int endgame = 0;
-int countdown = 1;
-int temp;
-int showinfo = 0;
-int totalscore = 0;
+
 
 
 //! Screen size
@@ -195,7 +181,17 @@ int main(int argc, char** argv)
 	initTexture("../models/coin.bmp", coinTexture);
 	initTexture("../models/hamvee.bmp", chassisTexture);
 	initTexture("../models/ball.bmp", bulletTexture);
-	initTexture("../models/glass.bmp", boxTexture);
+	initTexture("../models/star6a.bmp", boxTexture);
+	initTexture("../models/bfront.bmp", frontTexture);
+	initTexture("../models/bbak.bmp", backTexture);
+	initTexture("../models/bleft.bmp", leftTexture);
+	initTexture("../models/bright.bmp", rightTexture);
+	initTexture("../models/bbot.bmp", bottomTexture);
+	initTexture("../models/skullbw4.bmp", deathTexture);
+
+
+	reset();
+
 
 
 
@@ -343,6 +339,7 @@ void display(void)
 
 
 
+	coinsLeft=0;
 	radHum = (rotateHumvee * M_PI / 180);		//convert bearing to rads
 
 
@@ -359,6 +356,7 @@ void display(void)
 			}
 			else if (map[x][y] == 2)
 			{
+				coinsLeft++;
 				xtran=(x * 4);
 				ytran=(y * 4);
 				drawCrate(xtran, ytran);
@@ -382,7 +380,18 @@ void display(void)
 	drawwheels();
 	drawTurret();
 	drawBullet();
-	drawBox(5,4);
+
+
+
+
+	//Skybox
+	int d(79.99999999999);
+	drawBox(frontTexture, d,0,0,0);
+	//no roof
+	drawBox(rightTexture, 0,0,d,0);
+	drawBox(backTexture,  -d,0,0,0);
+	drawBox(bottomTexture,0,-d,0,90);
+	drawBox(leftTexture,  0,0,-d,0);
 
 
 	glUniform3f(LightPositionUniformLocation, lightPosition.x,lightPosition.y,lightPosition.z);
@@ -406,13 +415,26 @@ void display(void)
 	sprintf(map, "Level %i", level);
 	render2dText(map, 0.9, 0.9, 0.9, -.99, 0.66);
 
-	countdown = int(20 + coinsCollected - t_global);
+	if (countdown !=0)
+		countdown = int(20 + coinsCollected - t_global);
 
 	sprintf(time, "Time = %i", countdown);
 	render2dText(time, 0.9, 0.9, 0.9, -.87, 0.66);
 
-	sprintf(coins, "Coins = %i", coinsCollected);
+	sprintf(coins, "Coins Collected = %i Coins Left = %i", coinsCollected,coinsLeft);
 	render2dText(coins, 1.0, 1.0, 1.0, -0.76, 0.66);
+
+	std::cout << (t_global - time_diff) << std::endl;
+	if (coinsLeft == 0)
+	{
+		skipLevel();
+	}
+	if (levelTxt == 1)
+	{
+		render2dText("LEVEL UP!",1,0,0,-0.05,0);
+		if (t_global > 2)
+			levelTxt = 0;
+	}
 
 	if (fall)
 	{
@@ -423,7 +445,7 @@ void display(void)
 	if (countdown == 0)
 	{
 		render2dText("TIME'S UP!!",1,0,0,-0.05,0);
-		render2dText("Press <ENTER> to restart",1,0,0,-0.07,-0.1);
+		render2dText("Press <ENTER> to restart",1,0,0,-0.1,-0.1);
 	}
 
 
@@ -445,12 +467,12 @@ void keyboard(unsigned char key, int x, int y)
 		exit(0);
 	}
 
-	if (key == 13)	//esc key code
+	if (key == 13)	//enter key code
 	{
 		reset();
 	}
 
-	if (key == 'l')	//enter key code
+	if (key == 'l')	//l key code
 	{
 		skipLevel();
 	}
@@ -471,7 +493,7 @@ void handleKeys()
 {
     //keys should be handled here
 
-    if(!fall)
+    if(!fall && countdown != 0)
 	{
 
 		if (keyStates['w'])
@@ -849,12 +871,15 @@ void drawBullet()
 }
 
 
-void drawBox(float x, float y)
+void drawBox(GLuint str, float x, float z, float y, float r)
 {
 
 	//Set Colour after program is in use
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, boxTexture);
+	glBindTexture(GL_TEXTURE_2D, str);
+	if (fall)
+		glBindTexture(GL_TEXTURE_2D, deathTexture);
+
 	glUniform1i(TextureMapUniformLocation, 0);
 
 
@@ -870,9 +895,13 @@ void drawBox(float x, float y)
 	//Apply Camera Manipluator to Set Model View Matrix on GPU
 	ModelViewMatrix.toIdentity();
 	if (!fall)
-		ModelViewMatrix.translate(transHumx,transHumz, transHumy);
+		ModelViewMatrix.translate(transHumx+x,transHumz+z, transHumy+y);
+	else
+		ModelViewMatrix.translate(transHumx+x,z, transHumy+y);
 
 	ModelViewMatrix.scale(40, 40, 40);
+	ModelViewMatrix.rotate(r,0,1,0);
+
 
 
 
@@ -957,6 +986,7 @@ void skipLevel()
 	}
 
 	reset();
+	levelTxt = 1;
 
 }
 
@@ -972,7 +1002,7 @@ void Load1() //top left must be a '1' for start position
 			{0,0,0,1,0,0,0,0,0,1},		//		v
 			{0,0,0,1,1,2,2,2,2,2}		//		x
 	};
-	std::copy(&map1[0][0], &map1[7][9],&map[0][0]);
+	std::copy(&map1[0][0], &map1[7][10],&map[0][0]);
 
 }
 
@@ -989,7 +1019,7 @@ void Load2() //top left must be a '1' for start position
 			{1,0,0,0,0,0,0,0,0,1},		//		v
 			{2,1,2,1,2,1,2,1,2,1}		//		x
 	};
-	std::copy(&map2[0][0], &map2[7][9],&map[0][0]);
+	std::copy(&map2[0][0], &map2[7][10],&map[0][0]);
 
 }
 
@@ -1005,7 +1035,7 @@ void Load3() //top left must be a '1' for start position
 			{1,2,1,0,1,2,1,0,0,1},		//		v
 			{0,0,2,1,2,0,1,2,1,2}		//		x
 	};
-	std::copy(&map3[0][0], &map3[7][9],&map[0][0]);
+	std::copy(&map3[0][0], &map3[7][10],&map[0][0]);
 
 }
 
@@ -1021,6 +1051,6 @@ void Load4() //top left must be a '1' for start position
 			{2,0,0,0,2,2,0,0,0,2},		//		v
 			{2,2,2,2,2,2,2,2,2,2},		//		x
 	};
-	std::copy(&map4[0][0], &map4[7][9],&map[0][0]);
+	std::copy(&map4[0][0], &map4[7][10],&map[0][0]);
 
 }

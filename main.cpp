@@ -40,6 +40,8 @@ void lAccel();
 void lDecel();
 void rAccel();
 void vDecel();
+void drawInst(std::string str, float x, float y);
+
 
 
 
@@ -147,15 +149,19 @@ float launchTime;
 int level(1);
 int countdown = 2;
 int levelTxt (0);
+int instOn(0);
 
+//camera
 float cameraz(0);
-
-
+bool viewToggle(false);
+float camRad(18);
+float camHeight(1);
+float addAng(0);
 
 
 //! Screen size
-int screenWidth   	        = 1720;
-int screenHeight   	        = 1200;
+int screenWidth   	        = 1920;
+int screenHeight   	        = 1080;
 
 //! Array of key states
 bool keyStates[256];
@@ -188,15 +194,15 @@ int main(int argc, char** argv)
 
 
 	//Init Camera Manipultor
-	cameraManip.setPanTiltRadius(rotateTurret,1.f,1.f);
-	cameraManip.setFocus(Vector3f(transHumx, transHumz, transHumy));
+	cameraManip.setPanTiltRadius(rotateTurret,1.f, camRad);
+	cameraManip.setFocus(Vector3f(transHumx, transHumz, transHumy + camHeight));
 
 	//load texture models
 	initTexture("../models/Crate.bmp", crateTexture);
 	initTexture("../models/coin.bmp", coinTexture);
 	initTexture("../models/hamvee.bmp", chassisTexture);
 	initTexture("../models/ball.bmp", bulletTexture);
-	initTexture("../models/star6a.bmp", boxTexture);
+	//initTexture("../models/star6a .bmp", boxTexture);
 	initTexture("../models/bfront.bmp", frontTexture);
 	initTexture("../models/bbak.bmp", backTexture);
 	initTexture("../models/bleft.bmp", leftTexture);
@@ -330,9 +336,13 @@ void initTexture(std::string filename, GLuint & textureID)
 void display(void)
 {
 
+
 	//move camera with hummer
 	if (!fall)
-		cameraManip.setFocus(Vector3f(transHumx, transHumz+5, transHumy));
+		cameraManip.setFocus(Vector3f(transHumx, transHumz+camHeight, transHumy));
+
+
+
 
 	//Handle keys
     handleKeys();
@@ -439,7 +449,7 @@ void display(void)
 	//Unuse Shader
 	glUseProgram(0);
     
-    //text
+    //text to screen
 
 
 	char time[100];
@@ -448,16 +458,31 @@ void display(void)
 
 
 	sprintf(map, "Level %i", level);
-	render2dText(map, 0.9, 0.9, 0.9, -.99, 0.66);
+	render2dText(map, 0.9, 0.9, 0.9, -.99, 0.92);
 
 	if ((countdown !=0) && (!fall))
 		countdown = int(20 + coinsCollected - t_global);
 
 	sprintf(time, "Time = %i", countdown);
-	render2dText(time, 0.9, 0.9, 0.9, -.87, 0.66);
+	render2dText(time, 0.9, 0.9, 0.9, -.87, 0.92);
 
 	sprintf(coins, "Coins Collected = %i Coins Left = %i", coinsCollected,coinsLeft);
-	render2dText(coins, 1.0, 1.0, 1.0, -0.76, 0.66);
+	render2dText(coins, 1.0, 1.0, 1.0, -0.76, 0.92);
+	render2dText("<i> for instructions",0,0,1,0.65,0.92);
+
+	if (instOn == 1)
+	{
+		drawInst("Fwd = w", 0, 0.87);
+		drawInst("Back = s", 0, 0.82);
+		drawInst("Left = a", 0, 0.77);
+		drawInst("Right = d", 0, 0.72);
+		drawInst("Look around = R Mouse", 0, 0.67);
+		drawInst("FIRE! = L Mouse", 0, 0.62);
+		drawInst("Reset = <Enter>", 0, 0.57);
+		drawInst("Level Up = l", 0, 0.52);
+		drawInst("Wireframe On/Off = 1/2", 0, 0.47);
+
+	}
 
 	if (coinsLeft == 0)
 	{
@@ -465,7 +490,7 @@ void display(void)
 	}
 	if (levelTxt == 1)
 	{
-		render2dText("LEVEL UP!",1,0,0,-0.05,0);
+		render2dText("LEVEL UP!!!",cos(t_global),sin(t_global),cos(t_global),-0.05,0);
 		if (t_global > 2)
 			levelTxt = 0;
 	}
@@ -482,6 +507,7 @@ void display(void)
 		render2dText("TIME'S UP!!",1,0,0,-0.05,0);
 		render2dText("Press <ENTER> to restart",1,0,0,-0.1,-0.1);
 	}
+
 
 
 
@@ -557,13 +583,15 @@ void handleKeys()
 			rotateHumvee -= (rVelo * 54 * cpuScale);
 		}
 
-		/*if (keyStates['w'] || keyStates['s'])
-
-
-		if (! (keyStates['w'] || keyStates['s'] ) )
+		if (keyStates['i'])
 		{
-			lDecel();
-		}*/
+			instOn = 1;
+		}
+		else
+			instOn = 0;
+		std::cout << viewToggle << std::endl;
+
+
 
 		if  (keyStates['a'] || keyStates['d'])
 			rAccel();
@@ -571,12 +599,18 @@ void handleKeys()
 		if (! (keyStates['a'] || keyStates['d']) )
 			rVelo = 0;
 
+		if(keyStates ['1'])
+		{
+			glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+		}
 
-		/*if (keyStates[' '])
-		 * if space and jump = false....
-			transHumz +=0.2;
-*/
-		std::cout << fall << std::endl;
+		if(keyStates ['2'])
+		{
+			glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+		}
+
+
+
 
 
 
@@ -607,11 +641,23 @@ void mouse(int button, int state, int x, int y)
 			launchTime = t_global;
 
 		}
-
-
-
 	}
 
+	if (button == GLUT_MIDDLE_BUTTON && state == GLUT_DOWN)
+	{
+			addAng = 220;
+			viewToggle = !viewToggle;
+	}
+
+	else
+		{
+			addAng = 0;
+		}
+
+	if (viewToggle)
+		camHeight = 1;
+	else
+		camHeight = 1;
 }
 
 //! Motion
@@ -882,8 +928,8 @@ ProjectionMatrix.getPtr());	//Pointer to ModelViewMatrixValues
 	ModelViewMatrix.translate(transHumx, transHumz, transHumy);
 	ModelViewMatrix.scale(scaleHumvee,scaleHumvee,scaleHumvee);
 
-	rotateTurret = cameraManip.getPan() * 180 / M_PI;
-	tiltTurret = cameraManip.getTilt() * -180 / M_PI;
+	rotateTurret =cameraManip.getPan() * 180 / M_PI;
+	tiltTurret = addAng + (cameraManip.getTilt() * -180 / M_PI);
 
 	ModelViewMatrix.translate(-0.1, 0, 0.35);
 	ModelViewMatrix.rotate(rotateTurret,0,1,0);
@@ -1185,4 +1231,12 @@ void vDecel() //vertical decelleration
 	vVelo -= 0.05;
 	if (lVelo <= -2)
 		lVelo = -2;
+}
+
+
+
+
+void drawInst(std::string str, float x, float y)
+{
+	render2dText(str,0,0,1,0.65,y);
 }

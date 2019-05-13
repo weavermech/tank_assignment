@@ -404,6 +404,12 @@ void display(void)
 	else
 		lVelo = 0;
 
+	/*//gravity
+	if (vVelo >= 0.05)
+		vVelo -= 0.05;
+	if (vVelo < 0.05)
+		vVelo = 0;
+*/
 
 	transHumx += (lVelo * cpuScale * sin(radHum));
 	transHumy += (lVelo *cpuScale * cos(radHum));
@@ -566,6 +572,10 @@ void handleKeys()
 			rVelo = 0;
 
 
+		/*if (keyStates[' '])
+		 * if space and jump = false....
+			transHumz +=0.2;
+*/
 		std::cout << fall << std::endl;
 
 
